@@ -1,0 +1,99 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account information and roles",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 2, "maxLength": 50 },
+        "email": { "type": "string", "pattern": "^[^@]+@[^@]+\\.[^@]+$" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "uid": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "role", "uid"]
+    },
+    "App": {
+      "title": "Marketplace Application",
+      "description": "Metadata for apps in the store",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "appNumber": { "type": "string", "pattern": "^[0-9]+$" },
+        "developer": { "type": "string" },
+        "category": { "type": "string" },
+        "version": { "type": "string" },
+        "size": { "type": "string" },
+        "shortDescription": { "type": "string", "maxLength": 200 },
+        "fullDescription": { "type": "string" },
+        "mainImage": { "type": "string", "format": "uri" },
+        "downloadUrl": { "type": "string", "format": "uri" },
+        "status": { "type": "string", "enum": ["draft", "published"] },
+        "screenshots": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "appNumber", "category", "status"]
+    },
+    "Download": {
+      "title": "Download Record",
+      "description": "History of user downloads",
+      "type": "object",
+      "properties": {
+        "appId": { "type": "string" },
+        "appName": { "type": "string" },
+        "userId": { "type": "string" },
+        "downloadedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["appId", "userId"]
+    },
+    "SavedApp": {
+      "title": "Saved Application",
+      "description": "User bookmarks",
+      "type": "object",
+      "properties": {
+        "appId": { "type": "string" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["appId", "userId"]
+    },
+    "AdSettings": {
+      "title": "Ads Center Settings",
+      "description": "Configuration for rotating ads 1-5 and rewarded ad 6",
+      "type": "object",
+      "properties": {
+        "global_ads_enabled": { "type": "boolean" },
+        "home_ads_enabled": { "type": "boolean" },
+        "apps_ads_enabled": { "type": "boolean" },
+        "pc_ads_enabled": { "type": "boolean" },
+        "bundle_ads_enabled": { "type": "boolean" },
+        "detail_ads_enabled": { "type": "boolean" },
+        "profile_ads_enabled": { "type": "boolean" },
+        "rewarded_ads_enabled": { "type": "boolean" }
+      }
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "apps/{appId}": {
+      "schema": "App",
+      "description": "Marketplace catalog"
+    },
+    "downloads/{downloadId}": {
+      "schema": "Download",
+      "description": "Global download logs"
+    },
+    "savedApps/{savedId}": {
+      "schema": "SavedApp",
+      "description": "User saved/favorite apps"
+    },
+    "settings/{settingId}": {
+      "schema": "AdSettings",
+      "description": "Global and ad configuration settings"
+    }
+  }
+}

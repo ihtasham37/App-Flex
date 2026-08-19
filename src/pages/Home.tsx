@@ -1,0 +1,402 @@
+import React, { useEffect, useState } from 'react';
+import { Button } from '../components/ui/Button';
+import { Star, Film, Gamepad2, ArrowRight, ShieldCheck, Smartphone, Monitor } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { cn, isAppItem, isBundleItem, isGameItem, isPCItem } from '../lib/utils';
+import { useSettings } from '../context/SettingsContext';
+import { useApps } from '../context/AppsContext';
+import { AdSlot } from '../components/ads/AdSlot';
+import { DesktopSidebar } from '../components/DesktopSidebar';
+
+interface AppData {
+  id: string;
+  name: string;
+  category: string;
+  developer?: string;
+  mainImage: string;
+  shortDescription?: string;
+  fullDescription?: string;
+  appNumber?: string;
+  rating?: number | string;
+  version?: string;
+  size?: string;
+  status?: string;
+  itemType?: 'app' | 'game' | 'bundle' | 'pc';
+  showOnBanner?: boolean;
+}
+
+interface HomeLine {
+  key: string;
+  type: 'app' | 'game' | 'bundle' | 'pc';
+  title: string;
+  items: AppData[];
+  seeAllPath: string;
+}
+
+export default function Home() {
+  const { settings } = useSettings();
+  const { apps, loading: appsLoading } = useApps();
+  const [allItems, setAllItems] = useState<AppData[]>([]);
+  const [bannerApps, setBannerApps] = useState<AppData[]>([]);
+  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
+  const [pageVisitId] = useState(() => Math.random().toString(36).substring(2, 9));
+  const [randomizedLines, setRandomizedLines] = useState<HomeLine[]>([]);
+
+  // Derive unique categories for sidebar
+  const allCategories = Array.from(new Set(allItems.map(i => i.category).filter(Boolean)));
+
+  const shuffle = <T,>(array: T[]): T[] => {
+    const newArr = [...array];
+    for (let i = newArr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+    }
+    return newArr;
+  };
+
+  useEffect(() => {
+    if (!apps) return;
+    const published = (apps as any[]).filter(item => !item.status || item.status === 'published');
+    const shuffledItems = shuffle(published);
+    setAllItems(shuffledItems);
+
+    // 1. Banner items
+    const banners = published.filter(item => item.showOnBanner);
+    setBannerApps(banners.length > 0 ? banners : published.slice(0, 5));
+
+    const appsOnly = published.filter(isAppItem);
+    const gamesOnly = published.filter(isGameItem);
+    const bundlesOnly = published.filter(isBundleItem);
+    const pcOnly = published.filter(isPCItem);
+
+    // Group items by category
+    const groupItems = (items: AppData[]) => {
+      const groups: { [cat: string]: AppData[] } = {};
+      items.forEach(item => {
+        const cat = item.category || 'General';
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push(item);
+      });
+      return groups;
+    };
+
+    const appGroups = groupItems(appsOnly);
+    const gameGroups = groupItems(gamesOnly);
+    const bundleGroups = groupItems(bundlesOnly);
+    const pcGroups = groupItems(pcOnly);
+
+    // 1. Top/Featured Lines (Always appear in the FIRST 4 lines on Home, randomly shuffled among themselves)
+    const topLines: HomeLine[] = [];
+
+    if (gamesOnly.length > 0) {
+      topLines.push({
+        key: 'top-games',
+        type: 'game',
+        title: 'Top Mobile Games',
+        items: shuffle(gamesOnly),
+        seeAllPath: '/explore?type=game'
+      });
+    }
+
+    if (bundlesOnly.length > 0) {
+      topLines.push({
+        key: 'top-bundles',
+        type: 'bundle',
+        title: 'Trending Video Bundles',
+        items: shuffle(bundlesOnly),
+        seeAllPath: '/bundles'
+      });
+    }
+
+    if (appsOnly.length > 0) {
+      topLines.push({
+        key: 'top-apps',
+        type: 'app',
+        title: 'Popular Android Apps',
+        items: shuffle(appsOnly),
+        seeAllPath: '/explore?type=app'
+      });
+    }
+
+    if (pcOnly.length > 0) {
+      topLines.push({
+        key: 'top-pc',
+        type: 'pc',
+        title: 'PC & Windows Software',
+        items: shuffle(pcOnly),
+        seeAllPath: '/pc'
+      });
+    }
+
+    // 2. Category Lines (Appear below the first 4 lines, randomly shuffled)
+    const categoryLines: HomeLine[] = [];
+
+    // Dynamic Category Lines for Games
+    Object.entries(gameGroups).forEach(([catName, list]) => {
+      if (list.length > 0) {
+        categoryLines.push({
+          key: `game-cat-${catName}`,
+          type: 'game',
+          title: catName,
+          items: shuffle(list),
+          seeAllPath: `/explore?category=${encodeURIComponent(catName)}&type=game`
+        });
+      }
+    });
+
+    // Dynamic Category Lines for Bundles
+    Object.entries(bundleGroups).forEach(([catName, list]) => {
+      if (list.length > 0) {
+        categoryLines.push({
+          key: `bundle-cat-${catName}`,
+          type: 'bundle',
+          title: catName,
+          items: shuffle(list),
+          seeAllPath: '/bundles'
+        });
+      }
+    });
+
+    // Dynamic Category Lines for Apps
+    Object.entries(appGroups).forEach(([catName, list]) => {
+      if (list.length > 0) {
+        categoryLines.push({
+          key: `app-cat-${catName}`,
+          type: 'app',
+          title: catName,
+          items: shuffle(list),
+          seeAllPath: `/explore?category=${encodeURIComponent(catName)}&type=app`
+        });
+      }
+    });
+
+    // Dynamic Category Lines for PC
+    Object.entries(pcGroups).forEach(([catName, list]) => {
+      if (list.length > 0) {
+        categoryLines.push({
+          key: `pc-cat-${catName}`,
+          type: 'pc',
+          title: catName,
+          items: shuffle(list),
+          seeAllPath: '/pc'
+        });
+      }
+    });
+
+    // First 4 lines are always the Top 4 Lines (randomized among each other), followed by all category lines (randomized)
+    const combinedLines = [...shuffle(topLines), ...shuffle(categoryLines)];
+    setRandomizedLines(combinedLines);
+  }, [apps]);
+
+  const loading = appsLoading && allItems.length === 0;
+
+  // Auto-rotate Banner Every 2 Seconds
+  useEffect(() => {
+    if (bannerApps.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentBannerIndex(prev => (prev + 1) % bannerApps.length);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [bannerApps.length]);
+
+  const activeBanner = bannerApps[currentBannerIndex] || null;
+
+  // Render a Single Category/Type Line on Home Page
+  // - type 'app' or 'game': SMALL CHOTA SQUARE CARD
+  // - type 'pc' or 'bundle': WIDE LANDSCAPE RECTANGULAR CARD (2 on mobile, 3 on desktop)
+  const renderHomeLine = (
+    type: 'app' | 'game' | 'bundle' | 'pc',
+    title: string,
+    items: AppData[],
+    seeAllPath: string
+  ) => {
+    if (!items || items.length === 0) return null;
+
+    let icon = <Smartphone size={17} className="text-blue-600" />;
+    let borderLeftColor = "border-blue-600";
+    let textColor = "text-blue-600";
+    let hoverBorder = "hover:border-blue-400";
+    let hoverText = "group-hover:text-blue-600";
+
+    if (type === 'game') {
+      icon = <Gamepad2 size={17} className="text-emerald-600" />;
+      borderLeftColor = "border-emerald-600";
+      textColor = "text-emerald-600";
+      hoverBorder = "hover:border-emerald-400";
+      hoverText = "group-hover:text-emerald-600";
+    } else if (type === 'bundle') {
+      icon = <Film size={17} className="text-purple-600" />;
+      borderLeftColor = "border-purple-600";
+      textColor = "text-purple-600";
+      hoverBorder = "hover:border-purple-400";
+      hoverText = "group-hover:text-purple-600";
+    } else if (type === 'pc') {
+      icon = <Monitor size={17} className="text-cyan-600" />;
+      borderLeftColor = "border-cyan-600";
+      textColor = "text-cyan-600";
+      hoverBorder = "hover:border-cyan-400";
+      hoverText = "group-hover:text-cyan-600";
+    }
+
+    const isWideFormat = type === 'bundle' || type === 'pc';
+
+    return (
+      <section className="space-y-2.5">
+        {/* Section Header with Title & See All */}
+        <div className="flex items-center justify-between px-1">
+          <div className={`flex items-center gap-2 border-l-4 ${borderLeftColor} pl-2.5`}>
+            {icon}
+            <h2 className="text-sm sm:text-base font-black text-slate-800 tracking-tight uppercase italic">
+              {title}
+            </h2>
+          </div>
+          
+          {/* SEE ALL OPTION */}
+          <Link 
+            to={seeAllPath} 
+            className={`text-[11px] font-black ${textColor} hover:underline flex items-center gap-0.5 uppercase tracking-wider`}
+          >
+            See All <ArrowRight size={13} />
+          </Link>
+        </div>
+
+        {/* CARDS DISPLAY: WIDE LANDSCAPE (PC & Bundles) vs SMALL SQUARE (Android Apps & Games) */}
+        {isWideFormat ? (
+          /* Wide Landscape Sliding Row (2 visible on mobile, 3 on desktop) */
+          <div className="flex gap-2.5 sm:gap-3 overflow-x-auto pb-3 pt-1 scrollbar-hide snap-x snap-mandatory -mx-1 px-1 scroll-smooth">
+            {items.map((item) => (
+              <Link 
+                key={item.id} 
+                to={`/apps/${item.id}`} 
+                className="snap-start shrink-0 w-[calc(48.5%-5px)] min-w-[155px] sm:w-[260px] md:w-[calc(33.333%-8px)] max-w-[340px] group block select-none"
+              >
+                <div className={`p-2 sm:p-2.5 bg-white rounded-2xl border border-slate-200/90 ${hoverBorder} shadow-xs hover:shadow-lg transition-all flex items-center gap-2.5 sm:gap-3 h-[74px] sm:h-[82px] text-left`}>
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden bg-slate-100 border border-slate-100 shrink-0 shadow-xs">
+                    <img 
+                      src={item.mainImage} 
+                      alt={item.name} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0 flex flex-col justify-center space-y-0.5 sm:space-y-1">
+                    <h3 className={`font-black text-slate-900 text-[10px] sm:text-xs line-clamp-2 ${hoverText} transition-colors uppercase leading-tight sm:leading-snug`}>
+                      {item.name}
+                    </h3>
+                    <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-bold text-slate-400">
+                      <span className="text-yellow-500 flex items-center gap-0.5 font-black">
+                        <Star size={9} fill="currentColor" /> {item.rating || '4.5'}
+                      </span>
+                      <span>•</span>
+                      <span className="uppercase text-slate-500 font-semibold truncate">{item.size || (type === 'pc' ? '45MB' : '120MB')}</span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          /* Classic Small Compact Square Icon Row (Android Apps & Mobile Games) */
+          <div className="flex gap-2.5 sm:gap-3.5 overflow-x-auto pb-3 pt-1 scrollbar-hide snap-x snap-mandatory -mx-1 px-1 scroll-smooth">
+            {items.map((item) => (
+              <Link 
+                key={item.id} 
+                to={`/apps/${item.id}`} 
+                className="snap-start shrink-0 w-[74px] sm:w-[90px] lg:w-[98px] group flex flex-col items-center text-center select-none"
+              >
+                <div className={`aspect-square w-full rounded-2xl bg-white p-1 shadow-xs border border-slate-200/90 ${hoverBorder} group-hover:shadow-md transition-all overflow-hidden flex items-center justify-center group-hover:-translate-y-1`}>
+                  <img 
+                    src={item.mainImage} 
+                    alt={item.name} 
+                    className="w-full h-full object-cover rounded-xl" 
+                  />
+                </div>
+                <div className="w-full mt-1.5 px-0.5 space-y-0.5">
+                  <h3 className={`font-black text-slate-800 text-[10px] sm:text-[11px] truncate leading-tight uppercase ${hoverText} transition-colors`}>
+                    {item.name}
+                  </h3>
+                  <div className="flex items-center justify-center gap-0.5 text-yellow-500">
+                    <Star size={9} fill="currentColor" />
+                    <span className="text-[9px] font-black text-slate-700">{item.rating || '4.5'}</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+    );
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-24 relative max-w-7xl mx-auto">
+      <div className="lg:col-span-8 xl:col-span-9 space-y-6">
+        {loading && (
+          <div className="fixed top-0 left-0 w-full h-1 bg-slate-100 z-[100]">
+            <div className="h-full bg-blue-600 animate-[loading_1.5s_infinite_ease-in-out] w-1/3 shadow-[0_0_10px_rgba(37,99,235,0.5)]" />
+          </div>
+        )}
+        
+        {/* 1. Hero Auto-rotating Banner */}
+        {activeBanner ? (
+          <section className="relative w-full aspect-[16/8] sm:aspect-[21/8] lg:aspect-[21/7] rounded-2xl overflow-hidden shadow-md border border-slate-200/90 bg-slate-950 select-none group">
+            <Link to={`/apps/${activeBanner.id}`} className="block w-full h-full">
+              <div className="absolute inset-0">
+                <img src={activeBanner.mainImage} alt={activeBanner.name} className="w-full h-full object-cover opacity-85 group-hover:scale-105 transition-all duration-700 ease-out" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/45 to-transparent" />
+              </div>
+              <div className="absolute bottom-0 left-0 p-4 sm:p-6 w-full flex items-end justify-between gap-3">
+                <div className="space-y-1.5 max-w-md">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 bg-yellow-400 text-slate-950 px-2 py-0.5 rounded-md text-[11px] font-black shadow-xs">
+                      <Star size={12} fill="currentColor" />
+                      <span>{activeBanner.rating || '4.8'}</span>
+                    </div>
+                    <span className="px-2 py-0.5 bg-blue-600/90 backdrop-blur-md text-white text-[10px] font-extrabold rounded-md uppercase tracking-wider">
+                      {activeBanner.category}
+                    </span>
+                  </div>
+                  <h1 className="text-lg sm:text-2xl font-black text-white tracking-tight leading-tight uppercase italic">{activeBanner.name}</h1>
+                </div>
+                <Button variant="gradient" size="sm" className="rounded-xl px-4 h-9 text-xs font-bold shadow-lg">View Now</Button>
+              </div>
+            </Link>
+          </section>
+        ) : null}
+
+        {/* 2. Randomized Category Lines with See All & Ads after every 2 lines */}
+        <div className="space-y-7">
+          {randomizedLines.map((line, idx) => (
+            <React.Fragment key={line.key}>
+              {renderHomeLine(line.type, line.title, line.items, line.seeAllPath)}
+              
+              {/* Show Ad after every 2 lines */}
+              {idx % 2 === 1 && (
+                <div className="pt-1">
+                  <AdSlot page="home" slotIndex={Math.floor(idx / 2)} pageVisitId={pageVisitId} />
+                </div>
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+
+        {/* Safety Badge */}
+        <div className="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 flex-shrink-0">
+              <ShieldCheck size={24} />
+            </div>
+            <div>
+              <h4 className="text-sm font-black text-slate-800">100% Safe & Tested Files</h4>
+              <p className="text-[12px] text-slate-500 font-medium italic">Verified by {settings.appName || 'APPFLEX'} Safety Team</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop Sidebar */}
+      <div className="lg:col-span-4 xl:col-span-3">
+        <DesktopSidebar categories={allCategories} trendingApps={allItems.filter(isAppItem).slice(0, 5)} />
+      </div>
+    </div>
+  );
+}

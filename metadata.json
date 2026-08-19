@@ -1,0 +1,8 @@
+{
+  "name": "AppFlix - Premium App Store",
+  "description": "AppFlix is a high-end app marketplace with discovery, search, and a secure admin management panel. Features glassmorphism UI, real-time Firebase integration, and MediaFire download flow.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
