@@ -57,18 +57,13 @@ function AppContent() {
   useEffect(() => {
     const handleInstalled = () => {
       localStorage.setItem('pwa_installed', 'true');
-      setIsAppAlreadyInstalled(true);
+      // Intentionally NOT setting isAppAlreadyInstalled here so the current browser tab
+      // stays on the landing page and shows the success message. The actual PWA will
+      // open in a new standalone window.
     };
     window.addEventListener('appinstalled', handleInstalled);
     return () => window.removeEventListener('appinstalled', handleInstalled);
   }, []);
-
-  // Detect AI Studio preview environment
-  const isAIStudioEnv = 
-    window.location.hostname.includes('run.app') || 
-    window.location.hostname.includes('localhost') ||
-    window.location.hostname.includes('aistudio.google') ||
-    window.location.hostname.includes('127.0.0.1');
 
   // Detect Android APK / AAB / WebView / Capacitor / TWA / Standalone mode
   const userAgent = navigator.userAgent || '';
@@ -83,7 +78,7 @@ function AppContent() {
     window.matchMedia('(display-mode: minimal-ui)').matches || 
     (window.navigator as any).standalone === true;
 
-  const isNativeOrAppMode = isAIStudioEnv || isStandalone || isAndroidWebView || isCapacitorOrNative || isAndroidTWA || isUrlAppFlag || isAppAlreadyInstalled;
+  const isNativeOrAppMode = isStandalone || isAndroidWebView || isCapacitorOrNative || isAndroidTWA || isUrlAppFlag || isAppAlreadyInstalled;
 
   if (authLoading || settingsLoading) return <LoadingScreen />;
 
@@ -92,7 +87,7 @@ function AppContent() {
 
   // Show PWALandingPage ONLY if not already installed and not in native app mode
   if (!isNativeOrAppMode && !isAuthOrAdmin) {
-    return <PWALandingPage onInstalled={() => setIsAppAlreadyInstalled(true)} />;
+    return <PWALandingPage />;
   }
 
   return (

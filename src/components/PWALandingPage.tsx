@@ -1,14 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Smartphone, ShieldCheck, Gamepad2, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Download, Smartphone, ShieldCheck, Gamepad2, CheckCircle2 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { useSettings } from '../context/SettingsContext';
 import { AppLogo } from './ui/AppLogo';
 
-interface PWALandingPageProps {
-  onInstalled?: () => void;
-}
-
-export const PWALandingPage: React.FC<PWALandingPageProps> = ({ onInstalled }) => {
+export const PWALandingPage: React.FC = () => {
   const { settings } = useSettings();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [installedSuccess, setInstalledSuccess] = useState(false);
@@ -27,11 +23,8 @@ export const PWALandingPage: React.FC<PWALandingPageProps> = ({ onInstalled }) =
       setInstalledSuccess(true);
       setDeferredPrompt(null);
       setInstalling(false);
-      if (onInstalled) {
-        setTimeout(() => {
-          onInstalled();
-        }, 1200);
-      }
+      // We purposefully DO NOT call onInstalled() here because we want the user
+      // to see the "Go to your phone" message instead of auto-opening the web app in the browser tab.
     };
     window.addEventListener('appinstalled', installedHandler);
 
@@ -39,7 +32,7 @@ export const PWALandingPage: React.FC<PWALandingPageProps> = ({ onInstalled }) =
       window.removeEventListener('beforeinstallprompt', handler);
       window.removeEventListener('appinstalled', installedHandler);
     };
-  }, [onInstalled]);
+  }, []);
 
   const handleInstall = async () => {
     if (deferredPrompt) {
@@ -52,30 +45,16 @@ export const PWALandingPage: React.FC<PWALandingPageProps> = ({ onInstalled }) =
           localStorage.setItem('pwa_installed', 'true');
           setInstalledSuccess(true);
           setDeferredPrompt(null);
-          if (onInstalled) {
-            setTimeout(() => {
-              onInstalled();
-            }, 1200);
-          }
+          // Do not call onInstalled() here, so they stay on this screen to see the success message
         }
       } catch (err) {
         console.error("Install prompt error:", err);
       }
       setInstalling(false);
     } else {
-      // If no prompt event, mark installed & proceed
-      localStorage.setItem('pwa_installed', 'true');
-      setInstalledSuccess(true);
-      if (onInstalled) {
-        onInstalled();
-      }
-    }
-  };
-
-  const handleManualProceed = () => {
-    localStorage.setItem('pwa_installed', 'true');
-    if (onInstalled) {
-      onInstalled();
+      // If no prompt event, maybe it's not supported or already installed.
+      // We can just show the instruction message
+      alert("Installation is managed by your browser. Tap the menu (3 dots) and select 'Install app' or 'Add to Home Screen'.");
     }
   };
 
@@ -101,7 +80,7 @@ export const PWALandingPage: React.FC<PWALandingPageProps> = ({ onInstalled }) =
             </h2>
             <p className="text-slate-500 font-medium leading-relaxed text-sm">
               {installedSuccess
-                ? 'App has been installed successfully! Opening app now...'
+                ? 'App has been installed successfully! Please go to your phone\'s home screen or app drawer to open it.'
                 : 'To browse our full catalog of premium apps, games, and bundles, please download and install the official app on your device.'}
             </p>
           </div>
@@ -123,15 +102,8 @@ export const PWALandingPage: React.FC<PWALandingPageProps> = ({ onInstalled }) =
             <div className="space-y-3">
               <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 flex items-center justify-center gap-3 text-emerald-700 font-bold text-sm">
                 <CheckCircle2 size={22} className="text-emerald-600" />
-                <span>Installed Successfully! Opening app...</span>
+                <span>Go to your phone screen to open the app!</span>
               </div>
-              <Button 
-                onClick={handleManualProceed}
-                className="w-full h-12 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-bold uppercase tracking-wider text-white"
-              >
-                <span>Launch App Now</span>
-                <ArrowRight size={16} className="ml-2" />
-              </Button>
             </div>
           ) : (
             <>
@@ -143,13 +115,6 @@ export const PWALandingPage: React.FC<PWALandingPageProps> = ({ onInstalled }) =
                 <Download size={24} className="mr-3" />
                 {installing ? 'Installing...' : 'Install App Now'}
               </Button>
-
-              <button
-                onClick={handleManualProceed}
-                className="text-xs font-bold text-slate-400 hover:text-blue-600 underline transition-colors pt-1"
-              >
-                Already Installed? Open App
-              </button>
 
               <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-2xl text-left">
                 <p className="text-xs font-semibold text-slate-600 leading-relaxed">
