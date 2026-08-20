@@ -60,19 +60,28 @@ function AppContent() {
     window.location.hostname.includes('aistudio.google') ||
     window.location.hostname.includes('127.0.0.1');
 
-  // Detect standalone mode (PWA installed and launched from home screen / desktop)
+  // Detect Android APK / AAB / WebView / Capacitor / TWA / Standalone mode
+  const userAgent = navigator.userAgent || '';
+  const isAndroidWebView = /wv|WebView|Android.*Version\/[0-9]/i.test(userAgent);
+  const isCapacitorOrNative = (window as any).Capacitor !== undefined || (window as any).cordova !== undefined;
+  const isAndroidTWA = document.referrer.includes('android-app://');
+  const isUrlAppFlag = location.search.includes('app=true') || location.search.includes('apk=true') || location.search.includes('aab=true') || location.search.includes('mode=app');
+
   const isStandalone = 
     window.matchMedia('(display-mode: standalone)').matches || 
-    (window.navigator as any).standalone === true ||
-    document.referrer.includes('android-app://');
+    window.matchMedia('(display-mode: fullscreen)').matches || 
+    window.matchMedia('(display-mode: minimal-ui)').matches || 
+    (window.navigator as any).standalone === true;
+
+  const isNativeOrAppMode = isAIStudioEnv || isStandalone || isAndroidWebView || isCapacitorOrNative || isAndroidTWA || isUrlAppFlag;
 
   if (authLoading || settingsLoading) return <LoadingScreen />;
 
   const path = location.pathname;
   const isAuthOrAdmin = path.startsWith('/login') || path.startsWith('/signup') || path.startsWith('/admin') || isAdmin;
 
-  // In production browser mode (not in AI Studio preview AND not standalone), show PWALandingPage
-  if (!isAIStudioEnv && !isStandalone && !isAuthOrAdmin) {
+  // Show PWALandingPage ONLY if on normal mobile/desktop browser (not inside APK / AAB / Standalone)
+  if (!isNativeOrAppMode && !isAuthOrAdmin) {
     return <PWALandingPage />;
   }
 

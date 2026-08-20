@@ -36,6 +36,7 @@ interface AppData {
 }
 
 import { RelatedAppsSidebar } from '../components/RelatedAppsSidebar';
+import { SEO } from '../components/SEO';
 
 function RelatedItems({ currentCategory, currentAppId }: { currentCategory: string, currentAppId: string, settings: any }) {
   const [relatedItems, setRelatedItems] = useState<AppData[]>([]);
@@ -266,8 +267,32 @@ export default function AppDetails() {
   // Filter valid screenshots only
   const displayScreenshots = (app.screenshots || []).filter(s => s && s.trim() !== '').slice(0, 4);
 
+  // Compute Category Default Description
+  const itemType = app.itemType || (
+    app.category?.toLowerCase().includes('pc') ? 'pc' :
+    app.category?.toLowerCase().includes('game') ? 'game' :
+    app.category?.toLowerCase().includes('bundle') ? 'bundle' : 'app'
+  );
+
+  const defaultCategoryDescription = 
+    itemType === 'game'
+      ? (settings.defaultGamesDescription || 'Download high-performance MOD games, unlimited coins/gems titles, unlocked levels, and verified APKs for the best gaming experience on APPFLEX.')
+      : itemType === 'pc'
+      ? (settings.defaultPCAppsDescription || 'Download full-version desktop software, PC utilities, Windows productivity tools, and creative applications for maximum performance on APPFLEX.')
+      : itemType === 'bundle'
+      ? (settings.defaultBundlesDescription || 'Download premium video editing packs, Lightroom presets, Premiere Pro templates, cinematic LUTs, overlays, and sound FX bundles on APPFLEX.')
+      : (settings.defaultAppsDescription || 'Discover and download official premium Android applications with 100% security, high speed servers, and lifetime updates on APPFLEX.');
+
+  const finalDescription = defaultCategoryDescription;
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-24 max-w-7xl mx-auto">
+      <SEO 
+        title={`${app.name} Download (${app.version || 'Latest Version'})`}
+        description={app.shortDescription || app.fullDescription?.substring(0, 150) || `Download ${app.name} APK version ${app.version || 'latest'} for free.`}
+        image={app.mainImage}
+        keywords={`${app.name}, download ${app.name}, ${app.category}, APK, APPFLEX`}
+      />
       {/* Main Column */}
       <div className="lg:col-span-8 xl:col-span-9 space-y-6">
         {/* Top Action Bar with Back & Save App */}
@@ -461,7 +486,7 @@ export default function AppDetails() {
             </h2>
           </div>
           <div className="text-slate-700 font-medium leading-relaxed text-sm sm:text-base whitespace-pre-line bg-slate-50/70 p-6 rounded-2xl border border-slate-100">
-            {app.fullDescription || 'No detailed description provided for this item.'}
+            {finalDescription}
           </div>
         </section>
 

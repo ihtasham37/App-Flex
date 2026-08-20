@@ -21,6 +21,7 @@ interface AppData {
 }
 
 import { DesktopSidebar } from '../components/DesktopSidebar';
+import { SEO } from '../components/SEO';
 
 export default function Search() {
   const { apps } = useApps();
@@ -103,6 +104,11 @@ export default function Search() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-24 max-w-7xl mx-auto">
+      <SEO 
+        title={searchTerm ? `Search Results for "${searchTerm}"` : "Search APKs, MOD Games, PC Softs & Bundles"}
+        description="Search thousands of verified Android apps, MOD games, PC software, Lightroom presets, and video bundles on APPFLEX."
+        keywords="search apps, find APKs, MOD games search, video bundles search, APPFLEX search"
+      />
       {/* Main Content */}
       <div className="lg:col-span-8 xl:col-span-9 space-y-8">
         <div className="space-y-5">

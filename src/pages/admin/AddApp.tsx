@@ -314,27 +314,7 @@ export default function AdminAddApp() {
             </div>
           </GlassCard>
 
-          {/* Description */}
-          <GlassCard className="p-8 space-y-6 bg-white border border-slate-200" hover={false}>
-            <div className="flex items-center gap-2 text-purple-600 mb-2">
-              <Info size={20} />
-              <h2 className="font-black uppercase tracking-widest text-sm">Full Description</h2>
-            </div>
 
-            <div className="flex flex-col gap-1.5 w-full">
-              <textarea
-                name="fullDescription"
-                rows={6}
-                placeholder={isBundle 
-                  ? "Describe package contents (presets, LUTs, resolution, compatibility)..." 
-                  : "Enter detailed description, game features, installation instructions..."}
-                value={formData.fullDescription}
-                onChange={handleChange}
-                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 text-xs leading-relaxed"
-                required
-              />
-            </div>
-          </GlassCard>
 
           {/* Screenshots - Exactly 4 slots in 1 row */}
           <GlassCard className="p-8 space-y-6 bg-white border border-slate-200" hover={false}>

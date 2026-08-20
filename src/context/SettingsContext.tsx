@@ -11,13 +11,17 @@ interface UpdateBanner {
   link: string;
 }
 
-interface AppSettings {
+export interface AppSettings {
   appName: string;
   updateBanner: UpdateBanner;
   supportEmail?: string;
   supportWhatsapp?: string;
   whatsappChannel?: string;
   telegramLink?: string;
+  defaultAppsDescription?: string;
+  defaultGamesDescription?: string;
+  defaultPCAppsDescription?: string;
+  defaultBundlesDescription?: string;
 }
 
 interface SettingsContextType {
@@ -39,6 +43,10 @@ const defaultSettings: AppSettings = {
   supportWhatsapp: '',
   whatsappChannel: '',
   telegramLink: '',
+  defaultAppsDescription: 'Discover and download official premium Android applications with 100% security, high speed servers, and lifetime updates on APPFLEX.',
+  defaultGamesDescription: 'Download high-performance MOD games, unlimited coins/gems titles, unlocked levels, and verified APKs for the best gaming experience on APPFLEX.',
+  defaultPCAppsDescription: 'Download full-version desktop software, PC utilities, Windows productivity tools, and creative applications for maximum performance on APPFLEX.',
+  defaultBundlesDescription: 'Download premium video editing packs, Lightroom presets, Premiere Pro templates, cinematic LUTs, overlays, and sound FX bundles on APPFLEX.',
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);

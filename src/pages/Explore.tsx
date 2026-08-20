@@ -6,6 +6,7 @@ import { cn, isAppItem, isGameItem } from '../lib/utils';
 import { AdSlot } from '../components/ads/AdSlot';
 import { useApps } from '../context/AppsContext';
 import { DesktopSidebar } from '../components/DesktopSidebar';
+import { SEO } from '../components/SEO';
 
 interface AppData {
   id: string;
@@ -133,6 +134,11 @@ export default function Explore() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-24 max-w-7xl mx-auto">
+      <SEO 
+        title={isGameMode ? "Top Android MOD Games & Action Titles" : "Explore Top Apps & Android Tools"}
+        description="Discover top trending Android applications, action games, utility tools, productivity software, and MOD APKs categorized for fast downloads on APPFLEX."
+        keywords="Android apps, MOD APKs, mobile games, action games, productivity tools, APPFLEX explore"
+      />
       <div className="lg:col-span-8 xl:col-span-9 space-y-4">
         
         {/* Type Header Bar */}

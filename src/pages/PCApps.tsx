@@ -6,6 +6,7 @@ import { Button } from '../components/ui/Button';
 import { AdSlot } from '../components/ads/AdSlot';
 import { useApps } from '../context/AppsContext';
 import { DesktopSidebar } from '../components/DesktopSidebar';
+import { SEO } from '../components/SEO';
 
 interface AppData {
   id: string;
@@ -120,6 +121,11 @@ export default function PCApps() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-24 max-w-7xl mx-auto">
+      <SEO 
+        title="PC Software, Windows Utilities & Desktop Applications"
+        description="Download full version PC software, Windows tools, office productivity applications, and desktop utilities for maximum performance on APPFLEX."
+        keywords="PC software, Windows apps, desktop software, PC utilities, Windows tools, APPFLEX PC"
+      />
       {/* Main Content */}
       <div className="lg:col-span-8 xl:col-span-9 space-y-4">
         

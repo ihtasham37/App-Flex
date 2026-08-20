@@ -7,6 +7,7 @@ import { useSettings } from '../context/SettingsContext';
 import { useApps } from '../context/AppsContext';
 import { AdSlot } from '../components/ads/AdSlot';
 import { DesktopSidebar } from '../components/DesktopSidebar';
+import { SEO } from '../components/SEO';
 
 interface AppData {
   id: string;
@@ -329,6 +330,11 @@ export default function Home() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-24 relative max-w-7xl mx-auto">
+      <SEO 
+        title="Verified Android APKs, MOD Games & PC Software" 
+        description="Download 100% verified, safe, and fast Android apps, MOD games, PC software, Lightroom presets, cinematic LUTs, and video editing bundles on APPFLEX."
+        keywords="APKs, MOD games, PC software, Lightroom presets, Premiere Pro templates, APPFLEX, download apps"
+      />
       <div className="lg:col-span-8 xl:col-span-9 space-y-6">
         {loading && (
           <div className="fixed top-0 left-0 w-full h-1 bg-slate-100 z-[100]">

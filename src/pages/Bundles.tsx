@@ -6,6 +6,7 @@ import { Button } from '../components/ui/Button';
 import { DesktopSidebar } from '../components/DesktopSidebar';
 import { AdSlot } from '../components/ads/AdSlot';
 import { useApps } from '../context/AppsContext';
+import { SEO } from '../components/SEO';
 
 export default function Bundles() {
   const { apps, categories: dbCategories, loading: appsLoading } = useApps();
@@ -115,6 +116,11 @@ export default function Bundles() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-24 max-w-7xl mx-auto">
+      <SEO 
+        title="Video Editing Bundles, Lightroom Presets & LUT Packs"
+        description="Download high quality video editing bundles, Lightroom presets, Premiere Pro templates, cinematic LUTs, overlays, and sound FX packs on APPFLEX."
+        keywords="video bundles, Lightroom presets, Premiere Pro templates, cinematic LUTs, sound FX, video editing packs, APPFLEX"
+      />
       {/* Main Content */}
       <div className="lg:col-span-8 xl:col-span-9 space-y-4">
         
