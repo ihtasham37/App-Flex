@@ -101,8 +101,12 @@ export default function Bundles() {
                 <span className="text-yellow-500 flex items-center gap-0.5 font-black">
                   <Star size={10} fill="currentColor" /> {bundle.rating || '4.8'}
                 </span>
-                <span>•</span>
-                <span className="uppercase text-slate-500 font-semibold truncate">{bundle.size || '120MB'}</span>
+                {bundle.size && bundle.size.trim() !== '' && (
+                  <>
+                    <span>•</span>
+                    <span className="uppercase text-slate-500 font-semibold truncate">{bundle.size}</span>
+                  </>
+                )}
               </div>
             </div>
 

@@ -25,7 +25,7 @@ export default function AdminAddApp() {
     developer: '',
     category: '',
     version: '1.0.0',
-    size: '45 MB',
+    size: '',
     rating: '4.8',
     shortDescription: '',
     fullDescription: '',
@@ -292,12 +292,11 @@ export default function AdminAddApp() {
                 required
               />
               <Input
-                label={isBundle ? "Pack Size" : "File Size"}
+                label={isBundle ? "Pack Size (Optional)" : "File Size (Optional)"}
                 name="size"
-                placeholder={isBundle ? "450 MB" : "64 MB"}
+                placeholder={isBundle ? "e.g. 450 MB (Leave empty to hide)" : "e.g. 64 MB (Leave empty to hide)"}
                 value={formData.size}
                 onChange={handleChange}
-                required
               />
               <Input
                 label="Rating (1.0 - 5.0)"

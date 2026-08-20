@@ -288,11 +288,11 @@ export default function AdminEditApp() {
                 required
               />
               <Input
-                label={isBundle ? "Pack Size" : "File Size"}
+                label={isBundle ? "Pack Size (Optional)" : "File Size (Optional)"}
                 name="size"
+                placeholder={isBundle ? "e.g. 450 MB (Leave empty to hide)" : "e.g. 64 MB (Leave empty to hide)"}
                 value={formData.size}
                 onChange={handleChange}
-                required
               />
               <Input
                 label="Rating (1.0 - 5.0)"

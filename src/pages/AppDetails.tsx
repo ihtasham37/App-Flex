@@ -379,18 +379,26 @@ export default function AppDetails() {
                   <Star size={18} fill="#FACC15" className="text-yellow-400" />
                   <span className="font-black text-slate-800 text-lg">{app.rating || '4.8'}</span>
                 </div>
-                <div className="w-px h-6 bg-slate-100 hidden sm:block" />
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Version</span>
-                  <span className="font-bold text-slate-800">
-                    {isBundle ? `Pack v${app.version || '1.0'}` : `v${app.version || '1.0.0'}`}
-                  </span>
-                </div>
-                <div className="w-px h-6 bg-slate-100 hidden sm:block" />
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Size</span>
-                  <span className="font-bold text-slate-800">{app.size || '45 MB'}</span>
-                </div>
+                {app.version && (
+                  <>
+                    <div className="w-px h-6 bg-slate-100 hidden sm:block" />
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Version</span>
+                      <span className="font-bold text-slate-800">
+                        {isBundle ? `Pack v${app.version}` : `v${app.version}`}
+                      </span>
+                    </div>
+                  </>
+                )}
+                {app.size && app.size.trim() !== '' && (
+                  <>
+                    <div className="w-px h-6 bg-slate-100 hidden sm:block" />
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Size</span>
+                      <span className="font-bold text-slate-800">{app.size}</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -415,12 +423,12 @@ export default function AppDetails() {
             >
               <Download size={22} className="mr-2" />
               {isBundle 
-                ? `Download Bundle (${app.size || '120 MB'})` 
+                ? (app.size && app.size.trim() !== '' ? `Download Bundle (${app.size})` : 'Download Bundle')
                 : isGame 
-                ? `Download Game (${app.size || '75 MB'})` 
+                ? (app.size && app.size.trim() !== '' ? `Download Game (${app.size})` : 'Download Game')
                 : isPC
-                ? `Download PC Software (${app.size || '150 MB'})`
-                : `Download APK (${app.size || '45 MB'})`
+                ? (app.size && app.size.trim() !== '' ? `Download PC Software (${app.size})` : 'Download PC Software')
+                : (app.size && app.size.trim() !== '' ? `Download APK (${app.size})` : 'Download APK')
               }
             </Button>
 

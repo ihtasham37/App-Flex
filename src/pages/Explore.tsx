@@ -214,10 +214,10 @@ export default function Explore() {
                 {chunkArray(singleCategoryItems, 4).map((lineItems, lineIdx) => (
                   <React.Fragment key={`single-line-${lineIdx}`}>
                     {renderLineOfCards(lineItems)}
-                    {/* Show ad after every 2 lines */}
-                    {(lineIdx + 1) % 2 === 0 && (
+                    {/* Show ad after every 3 lines */}
+                    {(lineIdx + 1) % 3 === 0 && (
                       <div className="pt-2">
-                        <AdSlot page="apps" slotIndex={Math.floor((lineIdx + 1) / 2)} pageVisitId={pageVisitId} />
+                        <AdSlot page="apps" slotIndex={Math.floor((lineIdx + 1) / 3) - 1} pageVisitId={pageVisitId} />
                       </div>
                     )}
                   </React.Fragment>
@@ -246,12 +246,12 @@ export default function Explore() {
                     </button>
                   </div>
 
-                  {/* Lines of 4 items with ads after every 2 lines */}
+                  {/* Lines of 4 items with ads after every 3 lines */}
                   <div className="space-y-3.5">
                     {lines.map((lineItems, lineIdx) => {
                       globalLineCount++;
                       const currentGlobalCount = globalLineCount;
-                      const showAdAfterThisLine = currentGlobalCount % 2 === 0;
+                      const showAdAfterThisLine = currentGlobalCount % 3 === 0;
 
                       return (
                         <React.Fragment key={`${catName}-line-${lineIdx}`}>
@@ -259,7 +259,7 @@ export default function Explore() {
 
                           {showAdAfterThisLine && (
                             <div className="pt-2">
-                              <AdSlot page="apps" slotIndex={Math.floor(currentGlobalCount / 2)} pageVisitId={pageVisitId} />
+                              <AdSlot page="apps" slotIndex={Math.floor(currentGlobalCount / 3) - 1} pageVisitId={pageVisitId} />
                             </div>
                           )}
                         </React.Fragment>

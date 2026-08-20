@@ -287,8 +287,12 @@ export default function Home() {
                       <span className="text-yellow-500 flex items-center gap-0.5 font-black">
                         <Star size={9} fill="currentColor" /> {item.rating || '4.5'}
                       </span>
-                      <span>•</span>
-                      <span className="uppercase text-slate-500 font-semibold truncate">{item.size || (type === 'pc' ? '45MB' : '120MB')}</span>
+                      {item.size && item.size.trim() !== '' && (
+                        <>
+                          <span>•</span>
+                          <span className="uppercase text-slate-500 font-semibold truncate">{item.size}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -369,16 +373,16 @@ export default function Home() {
           </section>
         ) : null}
 
-        {/* 2. Randomized Category Lines with See All & Ads after every 2 lines */}
+        {/* 2. Randomized Category Lines with See All & Ads after every 3 lines */}
         <div className="space-y-7">
           {randomizedLines.map((line, idx) => (
             <React.Fragment key={line.key}>
               {renderHomeLine(line.type, line.title, line.items, line.seeAllPath)}
               
-              {/* Show Ad after every 2 lines */}
-              {idx % 2 === 1 && (
+              {/* Show Ad after every 3 lines */}
+              {(idx + 1) % 3 === 0 && (
                 <div className="pt-1">
-                  <AdSlot page="home" slotIndex={Math.floor(idx / 2)} pageVisitId={pageVisitId} />
+                  <AdSlot page="home" slotIndex={Math.floor((idx + 1) / 3) - 1} pageVisitId={pageVisitId} />
                 </div>
               )}
             </React.Fragment>

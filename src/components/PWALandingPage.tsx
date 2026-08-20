@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Smartphone, ShieldCheck, Gamepad2, CheckCircle2 } from 'lucide-react';
+import { Download, Smartphone, ShieldCheck, Gamepad2, CheckCircle2, ArrowRight } from 'lucide-react';
 import { Button } from './ui/Button';
 import { useSettings } from '../context/SettingsContext';
 import { AppLogo } from './ui/AppLogo';
 
-export const PWALandingPage: React.FC = () => {
+interface PWALandingPageProps {
+  onInstalled?: () => void;
+}
+
+export const PWALandingPage: React.FC<PWALandingPageProps> = ({ onInstalled }) => {
   const { settings } = useSettings();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [installedSuccess, setInstalledSuccess] = useState(false);
@@ -19,9 +23,15 @@ export const PWALandingPage: React.FC = () => {
     window.addEventListener('beforeinstallprompt', handler);
 
     const installedHandler = () => {
+      localStorage.setItem('pwa_installed', 'true');
       setInstalledSuccess(true);
       setDeferredPrompt(null);
       setInstalling(false);
+      if (onInstalled) {
+        setTimeout(() => {
+          onInstalled();
+        }, 1200);
+      }
     };
     window.addEventListener('appinstalled', installedHandler);
 
@@ -29,7 +39,7 @@ export const PWALandingPage: React.FC = () => {
       window.removeEventListener('beforeinstallprompt', handler);
       window.removeEventListener('appinstalled', installedHandler);
     };
-  }, []);
+  }, [onInstalled]);
 
   const handleInstall = async () => {
     if (deferredPrompt) {
@@ -39,13 +49,33 @@ export const PWALandingPage: React.FC = () => {
         const { outcome } = await deferredPrompt.userChoice;
         console.log(`User response to install prompt: ${outcome}`);
         if (outcome === 'accepted') {
+          localStorage.setItem('pwa_installed', 'true');
           setInstalledSuccess(true);
           setDeferredPrompt(null);
+          if (onInstalled) {
+            setTimeout(() => {
+              onInstalled();
+            }, 1200);
+          }
         }
       } catch (err) {
         console.error("Install prompt error:", err);
       }
       setInstalling(false);
+    } else {
+      // If no prompt event, mark installed & proceed
+      localStorage.setItem('pwa_installed', 'true');
+      setInstalledSuccess(true);
+      if (onInstalled) {
+        onInstalled();
+      }
+    }
+  };
+
+  const handleManualProceed = () => {
+    localStorage.setItem('pwa_installed', 'true');
+    if (onInstalled) {
+      onInstalled();
     }
   };
 
@@ -71,7 +101,7 @@ export const PWALandingPage: React.FC = () => {
             </h2>
             <p className="text-slate-500 font-medium leading-relaxed text-sm">
               {installedSuccess
-                ? 'App has been installed on your device! Open the app icon from your Home Screen or Desktop.'
+                ? 'App has been installed successfully! Opening app now...'
                 : 'To browse our full catalog of premium apps, games, and bundles, please download and install the official app on your device.'}
             </p>
           </div>
@@ -90,9 +120,18 @@ export const PWALandingPage: React.FC = () => {
 
         <div className="pt-4 space-y-4">
           {installedSuccess ? (
-            <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 flex items-center justify-center gap-3 text-emerald-700 font-bold text-sm">
-              <CheckCircle2 size={22} className="text-emerald-600" />
-              <span>Installed Successfully! Check your Home Screen / Desktop.</span>
+            <div className="space-y-3">
+              <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 flex items-center justify-center gap-3 text-emerald-700 font-bold text-sm">
+                <CheckCircle2 size={22} className="text-emerald-600" />
+                <span>Installed Successfully! Opening app...</span>
+              </div>
+              <Button 
+                onClick={handleManualProceed}
+                className="w-full h-12 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-bold uppercase tracking-wider text-white"
+              >
+                <span>Launch App Now</span>
+                <ArrowRight size={16} className="ml-2" />
+              </Button>
             </div>
           ) : (
             <>
@@ -104,6 +143,13 @@ export const PWALandingPage: React.FC = () => {
                 <Download size={24} className="mr-3" />
                 {installing ? 'Installing...' : 'Install App Now'}
               </Button>
+
+              <button
+                onClick={handleManualProceed}
+                className="text-xs font-bold text-slate-400 hover:text-blue-600 underline transition-colors pt-1"
+              >
+                Already Installed? Open App
+              </button>
 
               <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-2xl text-left">
                 <p className="text-xs font-semibold text-slate-600 leading-relaxed">

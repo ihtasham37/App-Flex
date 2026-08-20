@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SettingsProvider } from './context/SettingsContext';
@@ -37,7 +37,7 @@ import AdminCategories from './pages/admin/Categories';
 import AdminLayout from './pages/admin/AdminLayout';
 
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) {
-  const { user, profile, loading, isAdmin } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
 
   if (loading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" />;
@@ -46,12 +46,22 @@ function ProtectedRoute({ children, adminOnly = false }: { children: React.React
   return <>{children}</>;
 }
 
-
-
 function AppContent() {
   const { isAdmin, loading: authLoading } = useAuth();
   const { loading: settingsLoading } = useSettings();
   const location = useLocation();
+  const [isAppAlreadyInstalled, setIsAppAlreadyInstalled] = useState<boolean>(() => {
+    return localStorage.getItem('pwa_installed') === 'true';
+  });
+
+  useEffect(() => {
+    const handleInstalled = () => {
+      localStorage.setItem('pwa_installed', 'true');
+      setIsAppAlreadyInstalled(true);
+    };
+    window.addEventListener('appinstalled', handleInstalled);
+    return () => window.removeEventListener('appinstalled', handleInstalled);
+  }, []);
 
   // Detect AI Studio preview environment
   const isAIStudioEnv = 
@@ -73,16 +83,16 @@ function AppContent() {
     window.matchMedia('(display-mode: minimal-ui)').matches || 
     (window.navigator as any).standalone === true;
 
-  const isNativeOrAppMode = isAIStudioEnv || isStandalone || isAndroidWebView || isCapacitorOrNative || isAndroidTWA || isUrlAppFlag;
+  const isNativeOrAppMode = isAIStudioEnv || isStandalone || isAndroidWebView || isCapacitorOrNative || isAndroidTWA || isUrlAppFlag || isAppAlreadyInstalled;
 
   if (authLoading || settingsLoading) return <LoadingScreen />;
 
   const path = location.pathname;
   const isAuthOrAdmin = path.startsWith('/login') || path.startsWith('/signup') || path.startsWith('/admin') || isAdmin;
 
-  // Show PWALandingPage ONLY if on normal mobile/desktop browser (not inside APK / AAB / Standalone)
+  // Show PWALandingPage ONLY if not already installed and not in native app mode
   if (!isNativeOrAppMode && !isAuthOrAdmin) {
-    return <PWALandingPage />;
+    return <PWALandingPage onInstalled={() => setIsAppAlreadyInstalled(true)} />;
   }
 
   return (

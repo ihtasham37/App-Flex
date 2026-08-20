@@ -106,8 +106,12 @@ export default function PCApps() {
                 <span className="text-yellow-500 flex items-center gap-0.5 font-black">
                   <Star size={10} fill="currentColor" /> {item.rating || '4.5'}
                 </span>
-                <span>•</span>
-                <span className="uppercase text-slate-500 font-semibold truncate">{item.size || '45MB'}</span>
+                {item.size && item.size.trim() !== '' && (
+                  <>
+                    <span>•</span>
+                    <span className="uppercase text-slate-500 font-semibold truncate">{item.size}</span>
+                  </>
+                )}
               </div>
             </div>
 
