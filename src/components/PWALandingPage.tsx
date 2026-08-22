@@ -19,12 +19,10 @@ export const PWALandingPage: React.FC = () => {
     window.addEventListener('beforeinstallprompt', handler);
 
     const installedHandler = () => {
-      localStorage.setItem('pwa_installed', 'true');
+      localStorage.setItem('pwa_installed_at', Date.now().toString());
       setInstalledSuccess(true);
       setDeferredPrompt(null);
       setInstalling(false);
-      // We purposefully DO NOT call onInstalled() here because we want the user
-      // to see the "Go to your phone" message instead of auto-opening the web app in the browser tab.
     };
     window.addEventListener('appinstalled', installedHandler);
 
@@ -124,12 +122,12 @@ export const PWALandingPage: React.FC = () => {
 
               <button 
                 onClick={() => {
-                  localStorage.setItem('pwa_installed', 'true');
+                  localStorage.setItem('pwa_installed_at', Date.now().toString());
                   window.location.reload();
                 }}
                 className="text-[11px] font-black text-slate-400 hover:text-slate-600 transition-colors uppercase tracking-widest underline underline-offset-4"
               >
-                Or Continue to Website
+                Or Continue to Website (Daily Check)
               </button>
             </>
           )}

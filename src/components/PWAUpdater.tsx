@@ -1,32 +1,32 @@
 import { useEffect } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
-export const PWAUpdater = () => {
+export function PWAUpdater() {
   const {
+    needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
+    onRegistered(r) {
+      // Check for updates every 24 hours
+      if (r) {
+        setInterval(() => {
+          r.update();
+        }, 24 * 60 * 60 * 1000);
+      }
+    },
     onNeedRefresh() {
-      // Automatically activate new service worker and refresh seamlessly for users
-      console.log('New app update detected! Updating automatically...');
+      // Automatically update and reload
+      console.log('[PWA] New version detected, updating...');
       updateServiceWorker(true);
     },
-    onOfflineReady() {
-      console.log('APPFLEX PWA is ready for offline use.');
-    }
   });
 
   useEffect(() => {
-    // Check for updates every 15 minutes when app is running
-    const interval = setInterval(() => {
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.ready.then((registration) => {
-          registration.update().catch(() => {});
-        });
-      }
-    }, 15 * 60 * 1000);
-
-    return () => clearInterval(interval);
-  }, []);
+    if (needRefresh) {
+      // If the service worker is ready to update, do it
+      updateServiceWorker(true);
+    }
+  }, [needRefresh, updateServiceWorker]);
 
   return null;
-};
+}

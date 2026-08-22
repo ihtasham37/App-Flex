@@ -51,15 +51,21 @@ function AppContent() {
   const { loading: settingsLoading } = useSettings();
   const location = useLocation();
   const [isAppAlreadyInstalled, setIsAppAlreadyInstalled] = useState<boolean>(() => {
-    return localStorage.getItem('pwa_installed') === 'true';
+    const installedAt = localStorage.getItem('pwa_installed_at');
+    if (!installedAt) return false;
+    
+    // Check if it was marked as "installed/bypassed" within the last 24 hours
+    const lastCheck = parseInt(installedAt);
+    const now = Date.now();
+    const twentyFourHours = 24 * 60 * 60 * 1000;
+    
+    return (now - lastCheck) < twentyFourHours;
   });
 
   useEffect(() => {
     const handleInstalled = () => {
-      localStorage.setItem('pwa_installed', 'true');
-      // Intentionally NOT setting isAppAlreadyInstalled here so the current browser tab
-      // stays on the landing page and shows the success message. The actual PWA will
-      // open in a new standalone window.
+      localStorage.setItem('pwa_installed_at', Date.now().toString());
+      setIsAppAlreadyInstalled(true);
     };
     window.addEventListener('appinstalled', handleInstalled);
     return () => window.removeEventListener('appinstalled', handleInstalled);
@@ -78,16 +84,22 @@ function AppContent() {
     window.matchMedia('(display-mode: minimal-ui)').matches || 
     (window.navigator as any).standalone === true;
 
-  const isNativeOrAppMode = isStandalone || isAndroidWebView || isCapacitorOrNative || isAndroidTWA || isUrlAppFlag || isAppAlreadyInstalled;
-  const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+  // Final check: is the user actually in the app?
+  const isInApp = isStandalone || isAndroidWebView || isCapacitorOrNative || isAndroidTWA || isUrlAppFlag;
+  
+  // If not in the app, check if they recently bypassed/installed
+  const isBypassedRecently = isAppAlreadyInstalled;
 
   if (authLoading || settingsLoading) return <LoadingScreen />;
 
   const path = location.pathname;
   const isAuthOrAdmin = path.startsWith('/login') || path.startsWith('/signup') || path.startsWith('/admin') || isAdmin;
 
-  // Show PWALandingPage ONLY if not already installed, not in native app mode, and NOT on mobile
-  if (!isNativeOrAppMode && !isAuthOrAdmin && !isMobileDevice) {
+  // Show PWALandingPage if:
+  // 1. Not currently in standalone app mode
+  // 2. AND have not bypassed/installed in the last 24 hours
+  // 3. AND not on an admin/auth page
+  if (!isInApp && !isBypassedRecently && !isAuthOrAdmin) {
     return <PWALandingPage />;
   }
 
