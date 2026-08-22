@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { Button } from '../ui/Button';
 import { AppLogo } from '../ui/AppLogo';
-import { LogIn, Shield, Bookmark, Film, Smartphone, Gamepad2, Search, Zap } from 'lucide-react';
+import { LogIn, Shield, Bookmark, Film, Smartphone, Search, Zap } from 'lucide-react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 
@@ -30,8 +30,7 @@ export const Header = () => {
   }, [user]);
 
   const isHome = location.pathname === '/';
-  const isApps = location.pathname === '/explore' && typeParam !== 'game';
-  const isGames = location.pathname === '/explore' && typeParam === 'game';
+  const isApps = location.pathname === '/explore';
   const isPC = location.pathname === '/pc';
   const isBundles = location.pathname === '/bundles';
   const isSearch = location.pathname === '/search';
@@ -62,20 +61,12 @@ export const Header = () => {
             Home
           </Link>
           <Link 
-            to="/explore?type=app" 
+            to="/explore" 
             className={`px-3.5 py-2 rounded-lg transition-all ${
               isApps ? 'bg-white text-blue-600 shadow-xs border border-slate-100' : 'hover:text-slate-900 hover:bg-white/50'
             }`}
           >
             Apps
-          </Link>
-          <Link 
-            to="/explore?type=game" 
-            className={`px-3.5 py-2 rounded-lg transition-all ${
-              isGames ? 'bg-white text-emerald-600 shadow-xs border border-slate-100' : 'hover:text-slate-900 hover:bg-white/50'
-            }`}
-          >
-            Games
           </Link>
           <Link 
             to="/pc" 

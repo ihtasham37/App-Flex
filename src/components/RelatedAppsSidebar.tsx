@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, query, where, limit, getDocs } from 'firebase/firestore';
-import { db } from '../lib/firebase';
 import { Star, ShieldCheck, Download, Zap } from 'lucide-react';
 import { GlassCard } from './ui/GlassCard';
+import { useApps } from '../context/AppsContext';
 
 interface AppData {
   id: string;
@@ -19,23 +18,25 @@ interface RelatedAppsSidebarProps {
 }
 
 export const RelatedAppsSidebar: React.FC<RelatedAppsSidebarProps> = ({ currentCategory, currentAppId }) => {
+  const { apps: allApps } = useApps();
   const [relatedApps, setRelatedApps] = useState<AppData[]>([]);
 
   useEffect(() => {
-    async function fetchRelated() {
-      const q = query(
-        collection(db, 'apps'),
-        where('category', '==', currentCategory),
-        limit(6)
-      );
-      const snap = await getDocs(q);
-      const apps = snap.docs
-        .map(doc => ({ id: doc.id, ...doc.data() } as AppData))
-        .filter(app => app.id !== currentAppId);
-      setRelatedApps(apps.slice(0, 5));
+    function fetchRelated() {
+      // Use in-memory apps from AppsContext (0 reads!)
+      const apps = (allApps as any[])
+        .filter(app => 
+          app.category === currentCategory && 
+          app.id !== currentAppId &&
+          (!app.status || app.status === 'published')
+        )
+        .slice(0, 5);
+      setRelatedApps(apps);
     }
-    fetchRelated();
-  }, [currentCategory, currentAppId]);
+    if (allApps.length > 0) {
+      fetchRelated();
+    }
+  }, [currentCategory, currentAppId, allApps]);
 
   return (
     <aside className="hidden lg:flex flex-col gap-6">

@@ -76,6 +76,40 @@ export default function AdminSettings() {
           </div>
         </GlassCard>
 
+        {/* Data & Cache Management Section */}
+        <GlassCard className="p-6 sm:p-8 space-y-6">
+          <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+            <Database className="text-orange-600" size={20} />
+            <h2 className="text-lg font-black text-slate-800">Data & Cache Management</h2>
+          </div>
+          
+          <div className="grid sm:grid-cols-2 gap-6">
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-slate-500 uppercase tracking-wider">Catalog Version</label>
+              <div className="flex gap-2">
+                <Input 
+                  type="number"
+                  value={formData.catalogVersion || 1}
+                  onChange={(e) => setFormData({ ...formData, catalogVersion: parseInt(e.target.value) || 1 })}
+                  className="rounded-xl flex-1"
+                />
+                <Button 
+                  type="button"
+                  onClick={() => setFormData({ ...formData, catalogVersion: (formData.catalogVersion || 0) + 1 })}
+                  variant="outline"
+                  className="rounded-xl px-4 border-orange-200 text-orange-600 hover:bg-orange-50"
+                  title="Increment Version"
+                >
+                  +1
+                </Button>
+              </div>
+              <p className="text-[10px] text-slate-400 font-medium">
+                Change this number to force all users to fetch new data from the server. Use this after adding or editing apps.
+              </p>
+            </div>
+          </div>
+        </GlassCard>
+
         {/* Support & Social Links Section */}
         <GlassCard className="p-6 sm:p-8 space-y-6">
           <div className="flex items-center gap-3 border-b border-slate-100 pb-4">

@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp, updateDoc, increment, getDocs, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Tag, Plus, Trash2, Smartphone, Gamepad2, Film, Layers, Monitor, FileText, Save, CheckCircle2 } from 'lucide-react';
+import { Tag, Plus, Trash2, Smartphone, Film, Layers, Monitor, FileText, Save, CheckCircle2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { cacheService } from '../../lib/cacheService';
 import { useSettings } from '../../context/SettingsContext';
@@ -13,14 +13,13 @@ export default function AdminCategories() {
   const { settings, updateSettings } = useSettings();
   const [categories, setCategories] = useState<any[]>([]);
   const [newCategory, setNewCategory] = useState('');
-  const [selectedMainType, setSelectedMainType] = useState<'app' | 'game' | 'bundle' | 'pc'>('app');
+  const [selectedMainType, setSelectedMainType] = useState<'app' | 'bundle' | 'pc'>('app');
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
-  const [filterType, setFilterType] = useState<'all' | 'app' | 'game' | 'bundle' | 'pc'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'app' | 'bundle' | 'pc'>('all');
 
   // Default Descriptions State
   const [descApps, setDescApps] = useState('');
-  const [descGames, setDescGames] = useState('');
   const [descPC, setDescPC] = useState('');
   const [descBundles, setDescBundles] = useState('');
   const [savingDesc, setSavingDesc] = useState(false);
@@ -29,7 +28,6 @@ export default function AdminCategories() {
   useEffect(() => {
     if (settings) {
       setDescApps(settings.defaultAppsDescription || 'Discover and download official premium Android applications with 100% security, high speed servers, and lifetime updates on APPFLEX.');
-      setDescGames(settings.defaultGamesDescription || 'Download high-performance MOD games, unlimited coins/gems titles, unlocked levels, and verified APKs for the best gaming experience on APPFLEX.');
       setDescPC(settings.defaultPCAppsDescription || 'Download full-version desktop software, PC utilities, Windows productivity tools, and creative applications for maximum performance on APPFLEX.');
       setDescBundles(settings.defaultBundlesDescription || 'Download premium video editing packs, Lightroom presets, Premiere Pro templates, cinematic LUTs, overlays, and sound FX bundles on APPFLEX.');
     }
@@ -55,6 +53,28 @@ export default function AdminCategories() {
         mainType: selectedMainType,
         createdAt: serverTimestamp()
       });
+
+      // Rebuild the catalog snapshot for 33k user optimization
+      try {
+        const appsSnap = await getDocs(collection(db, 'apps'));
+        const catsSnap = await getDocs(collection(db, 'categories'));
+        const allApps = appsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const allCats = catsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        await setDoc(doc(db, 'settings', 'catalog'), {
+          apps: allApps,
+          categories: allCats,
+          updatedAt: serverTimestamp()
+        });
+
+        await updateDoc(doc(db, 'settings', 'global'), {
+          catalogVersion: increment(1),
+          lastCatalogUpdate: Date.now()
+        });
+      } catch (err) {
+        console.warn('Catalog sync failed:', err);
+      }
+
       cacheService.clearAll();
       setNewCategory('');
     } catch (error) {
@@ -68,6 +88,28 @@ export default function AdminCategories() {
     if (window.confirm('Are you sure you want to delete this category?')) {
       try {
         await deleteDoc(doc(db, 'categories', id));
+        
+        // Rebuild the catalog snapshot for 33k user optimization
+        try {
+          const appsSnap = await getDocs(collection(db, 'apps'));
+          const catsSnap = await getDocs(collection(db, 'categories'));
+          const allApps = appsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const allCats = catsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          
+          await setDoc(doc(db, 'settings', 'catalog'), {
+            apps: allApps,
+            categories: allCats,
+            updatedAt: serverTimestamp()
+          });
+
+          await updateDoc(doc(db, 'settings', 'global'), {
+            catalogVersion: increment(1),
+            lastCatalogUpdate: Date.now()
+          });
+        } catch (err) {
+          console.warn('Catalog sync failed:', err);
+        }
+
         cacheService.clearAll();
       } catch (error) {
         console.error("Error deleting category:", error);
@@ -82,7 +124,6 @@ export default function AdminCategories() {
     try {
       await updateSettings({
         defaultAppsDescription: descApps,
-        defaultGamesDescription: descGames,
         defaultPCAppsDescription: descPC,
         defaultBundlesDescription: descBundles,
       });
@@ -105,10 +146,10 @@ export default function AdminCategories() {
     <div className="space-y-8 pb-16 max-w-6xl mx-auto">
       <div className="space-y-1">
         <h1 className="text-2xl font-black text-slate-900">Category & Default Descriptions Management</h1>
-        <p className="text-xs text-slate-500 font-medium">Configure sub-categories and set default descriptions for Apps, Games, PC Soft, and Video Bundles.</p>
+        <p className="text-xs text-slate-500 font-medium">Configure sub-categories and set default descriptions for Apps, PC Soft, and Video Bundles.</p>
       </div>
 
-      {/* SECTION 1: Default 4 Category Descriptions Manager */}
+      {/* SECTION 1: Default 3 Category Descriptions Manager */}
       <GlassCard className="p-8 bg-white border border-slate-200 space-y-6" hover={false}>
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
@@ -118,7 +159,7 @@ export default function AdminCategories() {
             <div>
               <h2 className="font-black text-base text-slate-900">Default Category Descriptions</h2>
               <p className="text-xs text-slate-500 font-medium">
-                These 4 default descriptions will automatically display on item detail pages for each category without needing manual input per item.
+                These 3 default descriptions will automatically display on item detail pages for each category without needing manual input per item.
               </p>
             </div>
           </div>
@@ -131,7 +172,7 @@ export default function AdminCategories() {
         </div>
 
         <form onSubmit={handleSaveDefaultDescriptions} className="space-y-6">
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-3 gap-6">
             
             {/* 1. Android Apps Default Description */}
             <div className="space-y-2 bg-blue-50/30 p-5 rounded-2xl border border-blue-100">
@@ -149,27 +190,11 @@ export default function AdminCategories() {
               />
             </div>
 
-            {/* 2. Games Default Description */}
-            <div className="space-y-2 bg-emerald-50/30 p-5 rounded-2xl border border-emerald-100">
-              <label className="text-xs font-black text-emerald-900 flex items-center gap-2 uppercase tracking-wider">
-                <Gamepad2 size={16} className="text-emerald-600" />
-                2. Games Category Default Description
-              </label>
-              <textarea
-                rows={4}
-                value={descGames}
-                onChange={(e) => setDescGames(e.target.value)}
-                placeholder="Enter default description for all Mobile Games..."
-                className="w-full bg-white border border-emerald-200 rounded-xl p-3 text-xs text-slate-800 outline-none focus:border-emerald-500 font-medium leading-relaxed"
-                required
-              />
-            </div>
-
-            {/* 3. PC Soft Default Description */}
+            {/* 2. PC Soft Default Description */}
             <div className="space-y-2 bg-slate-100/50 p-5 rounded-2xl border border-slate-200">
               <label className="text-xs font-black text-slate-900 flex items-center gap-2 uppercase tracking-wider">
                 <Monitor size={16} className="text-slate-800" />
-                3. PC Soft Category Default Description
+                2. PC Soft Category Default Description
               </label>
               <textarea
                 rows={4}
@@ -181,11 +206,11 @@ export default function AdminCategories() {
               />
             </div>
 
-            {/* 4. Video Bundles Default Description */}
+            {/* 3. Video Bundles Default Description */}
             <div className="space-y-2 bg-purple-50/30 p-5 rounded-2xl border border-purple-100">
               <label className="text-xs font-black text-purple-900 flex items-center gap-2 uppercase tracking-wider">
                 <Film size={16} className="text-purple-600" />
-                4. Video Bundles Category Default Description
+                3. Video Bundles Category Default Description
               </label>
               <textarea
                 rows={4}
@@ -226,7 +251,7 @@ export default function AdminCategories() {
           <form onSubmit={handleAddCategory} className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700">Choose Main Type:</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => setSelectedMainType('app')}
@@ -239,20 +264,6 @@ export default function AdminCategories() {
                 >
                   <Smartphone size={16} />
                   <span>Apps</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedMainType('game')}
-                  className={cn(
-                    "py-2 px-1 rounded-xl text-[11px] font-bold border transition-all flex flex-col items-center gap-1",
-                    selectedMainType === 'game'
-                      ? "bg-emerald-600 border-emerald-600 text-white shadow-xs"
-                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
-                  )}
-                >
-                  <Gamepad2 size={16} />
-                  <span>Games</span>
                 </button>
 
                 <button
@@ -289,7 +300,6 @@ export default function AdminCategories() {
               label="Category Title"
               placeholder={
                 selectedMainType === 'app' ? "e.g. Tools, Photography, Social" :
-                selectedMainType === 'game' ? "e.g. Action, Racing, Strategy" :
                 selectedMainType === 'pc' ? "e.g. Editors, Anti-Virus, PC Tools" :
                 "e.g. Cinematic LUTs, CapCut Presets"
               }
@@ -315,7 +325,7 @@ export default function AdminCategories() {
 
             {/* Filter Tabs */}
             <div className="flex gap-1.5 flex-wrap">
-              {(['all', 'app', 'game', 'pc', 'bundle'] as const).map((t) => (
+              {(['all', 'app', 'pc', 'bundle'] as const).map((t) => (
                 <button
                   key={t}
                   onClick={() => setFilterType(t)}
@@ -326,7 +336,7 @@ export default function AdminCategories() {
                       : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
                   )}
                 >
-                  {t === 'all' ? 'All' : t === 'app' ? 'Apps' : t === 'game' ? 'Games' : t === 'pc' ? 'PC' : 'Bundles'}
+                  {t === 'all' ? 'All' : t === 'app' ? 'Apps' : t === 'pc' ? 'PC' : 'Bundles'}
                 </button>
               ))}
             </div>
@@ -343,7 +353,7 @@ export default function AdminCategories() {
                     <div className="flex items-center gap-2 truncate pr-2">
                       <span className={cn(
                         "w-2 h-2 rounded-full flex-shrink-0",
-                        type === 'game' ? "bg-emerald-500" : type === 'bundle' ? "bg-purple-500" : type === 'pc' ? "bg-slate-800" : "bg-blue-500"
+                        type === 'bundle' ? "bg-purple-500" : type === 'pc' ? "bg-slate-800" : "bg-blue-500"
                       )} />
                       <span className="font-bold text-xs text-slate-800 truncate">{cat.name}</span>
                     </div>

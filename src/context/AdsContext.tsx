@@ -118,10 +118,9 @@ export const AdsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setAdSettings(merged);
         cacheService.set(CACHE_KEYS.ADS, merged);
       } else {
-        // Initialize with default ad settings if admin
-        setDoc(doc(db, 'settings', 'ads'), defaultAdSettings).catch((err) => {
-          console.warn("Could not init ads settings (likely non-admin):", err);
-        });
+        // We no longer automatically initialize for every user to avoid "Missing or insufficient permissions" warnings.
+        // Admins can initialize from the Admin Ads Center by saving settings.
+        setAdSettings(defaultAdSettings);
       }
       setLoading(false);
     }, (error) => {

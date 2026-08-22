@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, addDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, onSnapshot, doc, updateDoc, increment, getDocs, setDoc } from 'firebase/firestore';
 import { db, auth } from '../../lib/firebase';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { 
   Package, Info, Image as ImageIcon, 
-  Save, ArrowLeft, Smartphone, Star, Film, Gamepad2, Layers, Monitor
+  Save, ArrowLeft, Smartphone, Star, Film, Layers, Monitor
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { cacheService } from '../../lib/cacheService';
@@ -19,7 +19,7 @@ export default function AdminAddApp() {
   const [categories, setCategories] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
-    itemType: 'app' as 'app' | 'game' | 'bundle' | 'pc',
+    itemType: 'app' as 'app' | 'bundle' | 'pc',
     name: '',
     appNumber: '',
     developer: '',
@@ -85,7 +85,7 @@ export default function AdminAddApp() {
       
       const itemData = {
         ...formData,
-        category: formData.category || (formData.itemType === 'game' ? 'Action Games' : formData.itemType === 'bundle' ? 'Video LUTs' : 'Tools'),
+        category: formData.category || (formData.itemType === 'bundle' ? 'Video LUTs' : formData.itemType === 'pc' ? 'Utilities' : 'Tools'),
         rating: parseFloat(formData.rating) || 4.5,
         screenshots: validScreenshots,
         createdAt: serverTimestamp(),
@@ -94,7 +94,17 @@ export default function AdminAddApp() {
       };
 
       await addDoc(collection(db, 'apps'), itemData);
-      cacheService.clearAll();
+      
+      // Update catalog version to trigger Delta Sync for all users
+      try {
+        await updateDoc(doc(db, 'settings', 'global'), {
+          catalogVersion: increment(1),
+          lastCatalogUpdate: Date.now()
+        });
+      } catch (err) {
+        console.warn('Version update failed:', err);
+      }
+
       navigate('/admin/apps');
     } catch (err: any) {
       setError(err.message || 'Failed to save item');
@@ -104,7 +114,6 @@ export default function AdminAddApp() {
   };
 
   const isBundle = formData.itemType === 'bundle';
-  const isGame = formData.itemType === 'game';
   const isPC = formData.itemType === 'pc';
 
   return (
@@ -115,21 +124,21 @@ export default function AdminAddApp() {
           Back to App Management
         </Button>
         <h1 className="text-2xl font-black text-gray-900">
-          Add New {isBundle ? 'Video Bundle' : isGame ? 'Game' : isPC ? 'PC Soft' : 'Android App'}
+          Add New {isBundle ? 'Video Bundle' : isPC ? 'PC Soft' : 'Android App'}
         </h1>
       </div>
 
       <form onSubmit={handleSubmit} className="grid lg:grid-cols-[2fr_1fr] gap-8">
         <div className="space-y-8">
           
-          {/* Main Item Type Selector (4 Options) */}
+          {/* Main Item Type Selector (3 Options) */}
           <GlassCard className="p-6 border-2 border-blue-100 bg-blue-50/20" hover={false}>
             <div className="flex items-center gap-2 text-blue-600 mb-3">
               <Layers size={20} />
               <h2 className="font-black uppercase tracking-widest text-xs">Choose Main Type</h2>
             </div>
             
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* App */}
               <button
                 type="button"
@@ -143,21 +152,6 @@ export default function AdminAddApp() {
               >
                 <Smartphone size={18} />
                 <span>Android App</span>
-              </button>
-
-              {/* Game */}
-              <button
-                type="button"
-                onClick={() => setFormData(prev => ({ ...prev, itemType: 'game', category: '' }))}
-                className={cn(
-                  "p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all font-black text-[10px]",
-                  formData.itemType === 'game'
-                    ? "border-emerald-600 bg-emerald-600 text-white shadow-md shadow-emerald-500/20" 
-                    : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300"
-                )}
-              >
-                <Gamepad2 size={18} />
-                <span>Mobile Game</span>
               </button>
 
               {/* PC */}
@@ -197,15 +191,15 @@ export default function AdminAddApp() {
             <div className="flex items-center gap-2 text-blue-600 mb-2">
               <Package size={20} />
               <h2 className="font-black uppercase tracking-widest text-sm">
-                {isBundle ? 'Video Bundle Information' : isGame ? 'Game Information' : isPC ? 'PC Software Information' : 'App Information'}
+                {isBundle ? 'Video Bundle Information' : isPC ? 'PC Software Information' : 'App Information'}
               </h2>
             </div>
             
             <div className="grid sm:grid-cols-2 gap-6">
               <Input
-                label={isBundle ? "Bundle Title" : isGame ? "Game Name" : isPC ? "Software Name" : "App Name"}
+                label={isBundle ? "Bundle Title" : isPC ? "Software Name" : "App Name"}
                 name="name"
-                placeholder={isBundle ? "e.g. 50+ Cinematic LUTs Pack" : isGame ? "e.g. Asphalt 9 Legends" : isPC ? "e.g. Adobe Premiere Pro" : "e.g. CapCut Pro Mod"}
+                placeholder={isBundle ? "e.g. 50+ Cinematic LUTs Pack" : isPC ? "e.g. Adobe Premiere Pro" : "e.g. CapCut Pro Mod"}
                 value={formData.name}
                 onChange={handleChange}
                 required
@@ -224,7 +218,7 @@ export default function AdminAddApp() {
               <Input
                 label={isBundle ? "Creator / Studio Name" : isPC ? "Publisher" : "Developer / Studio"}
                 name="developer"
-                placeholder={isBundle ? "e.g. CreatorStudio" : isGame ? "e.g. Gameloft" : isPC ? "e.g. Adobe" : "e.g. Bytedance"}
+                placeholder={isBundle ? "e.g. CreatorStudio" : isPC ? "e.g. Adobe" : "e.g. Bytedance"}
                 value={formData.developer}
                 onChange={handleChange}
                 required
@@ -252,14 +246,6 @@ export default function AdminAddApp() {
                           <option value="4K Overlays">4K Overlays</option>
                         </>
                       )}
-                      {isGame && (
-                        <>
-                          <option value="Action Games">Action Games</option>
-                          <option value="Racing">Racing</option>
-                          <option value="Strategy">Strategy</option>
-                          <option value="Arcade">Arcade</option>
-                        </>
-                      )}
                       {isPC && (
                         <>
                           <option value="Editors">Editors</option>
@@ -268,7 +254,7 @@ export default function AdminAddApp() {
                           <option value="Anti-Virus">Anti-Virus</option>
                         </>
                       )}
-                      {!isBundle && !isGame && !isPC && (
+                      {!isBundle && !isPC && (
                         <>
                           <option value="Tools">Tools</option>
                           <option value="Photography">Photography</option>
@@ -439,7 +425,7 @@ export default function AdminAddApp() {
               loading={loading}
             >
               <Save size={18} className="mr-2" />
-              Save & Publish {isBundle ? 'Bundle' : isGame ? 'Game' : 'App'}
+              Save & Publish {isBundle ? 'Bundle' : isPC ? 'PC Software' : 'App'}
             </Button>
 
             <Button

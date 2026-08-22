@@ -79,14 +79,15 @@ function AppContent() {
     (window.navigator as any).standalone === true;
 
   const isNativeOrAppMode = isStandalone || isAndroidWebView || isCapacitorOrNative || isAndroidTWA || isUrlAppFlag || isAppAlreadyInstalled;
+  const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
 
   if (authLoading || settingsLoading) return <LoadingScreen />;
 
   const path = location.pathname;
   const isAuthOrAdmin = path.startsWith('/login') || path.startsWith('/signup') || path.startsWith('/admin') || isAdmin;
 
-  // Show PWALandingPage ONLY if not already installed and not in native app mode
-  if (!isNativeOrAppMode && !isAuthOrAdmin) {
+  // Show PWALandingPage ONLY if not already installed, not in native app mode, and NOT on mobile
+  if (!isNativeOrAppMode && !isAuthOrAdmin && !isMobileDevice) {
     return <PWALandingPage />;
   }
 

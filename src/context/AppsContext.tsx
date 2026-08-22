@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { collection, getDocs, doc, getDoc, query, where, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { cacheService, CACHE_KEYS, DEFAULT_CACHE_TTL } from '../lib/cacheService';
+import { useSettings } from './SettingsContext';
 
 export interface AppItemData {
   id: string;
@@ -41,61 +42,147 @@ interface AppsContextType {
 const AppsContext = createContext<AppsContextType | undefined>(undefined);
 
 export const AppsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { settings } = useSettings();
+
   // Try loading from localStorage cache first for 0ms instant startup & 0 Firestore reads
   const [apps, setApps] = useState<AppItemData[]>(() => {
-    return cacheService.get<AppItemData[]>(CACHE_KEYS.APPS, DEFAULT_CACHE_TTL) || [];
+    return cacheService.get<AppItemData[]>(CACHE_KEYS.APPS, DEFAULT_CACHE_TTL * 30) || [];
   });
 
   const [categories, setCategories] = useState<CategoryData[]>(() => {
-    return cacheService.get<CategoryData[]>(CACHE_KEYS.CATEGORIES, DEFAULT_CACHE_TTL) || [];
+    return cacheService.get<CategoryData[]>(CACHE_KEYS.CATEGORIES, DEFAULT_CACHE_TTL * 30) || [];
   });
 
   const [loading, setLoading] = useState<boolean>(() => {
-    const cached = cacheService.get<AppItemData[]>(CACHE_KEYS.APPS, DEFAULT_CACHE_TTL);
+    const cached = cacheService.get<AppItemData[]>(CACHE_KEYS.APPS, DEFAULT_CACHE_TTL * 30);
     return !cached || cached.length === 0;
   });
 
+  const lastCatalogVersion = useRef<number | null>(
+    localStorage.getItem('catalog_version_cached') ? parseInt(localStorage.getItem('catalog_version_cached')!) : null
+  );
+
+  const lastSyncTime = useRef<number>(
+    localStorage.getItem('appflex_last_sync_time') ? parseInt(localStorage.getItem('appflex_last_sync_time')!) : 0
+  );
+
   const fetchCatalog = useCallback(async (force = false) => {
-    // If not forcing and cache exists, don't read from Firestore (Saves free quota!)
-    if (!force) {
-      const cachedApps = cacheService.get<AppItemData[]>(CACHE_KEYS.APPS, DEFAULT_CACHE_TTL);
-      const cachedCats = cacheService.get<CategoryData[]>(CACHE_KEYS.CATEGORIES, DEFAULT_CACHE_TTL);
-      if (cachedApps && cachedApps.length > 0) {
-        setApps(cachedApps);
-        if (cachedCats) setCategories(cachedCats);
-        setLoading(false);
-        return;
-      }
+    // 1. Check if we already have apps in cache and the version hasn't changed
+    const currentApps = cacheService.get<AppItemData[]>(CACHE_KEYS.APPS, DEFAULT_CACHE_TTL * 30) || [];
+    const currentCats = cacheService.get<CategoryData[]>(CACHE_KEYS.CATEGORIES, DEFAULT_CACHE_TTL * 30) || [];
+    
+    // SMART CACHE: If version matches and we have data, DO NOT FETCH ANYTHING
+    // This is the "Zero Read" path for 99% of user sessions.
+    if (!force && 
+        settings.catalogVersion !== undefined && 
+        lastCatalogVersion.current === settings.catalogVersion && 
+        currentApps.length > 0) {
+      setApps(currentApps);
+      setCategories(currentCats);
+      setLoading(false);
+      return;
     }
 
     try {
-      // 1. Fetch apps
-      const appsSnap = await getDocs(collection(db, 'apps'));
-      const fetchedApps: AppItemData[] = appsSnap.docs
-        .map(d => ({ id: d.id, ...d.data() } as AppItemData))
-        .filter(item => !item.status || item.status === 'published');
+      setLoading(true);
+      
+      // Determine if we do a Full Fetch or Delta Fetch
+      const isFullFetch = force || currentApps.length === 0 || lastSyncTime.current === 0;
+      console.log(`[AppsProvider] Starting ${isFullFetch ? 'Full' : 'Delta'} Sync (DB: ${settings.catalogVersion || '?'})...`);
 
-      // 2. Fetch categories
-      const catsSnap = await getDocs(collection(db, 'categories'));
-      const fetchedCats: CategoryData[] = catsSnap.docs
-        .map(d => ({ id: d.id, ...d.data() } as CategoryData));
+      let appsSnap;
+      let catsSnap;
 
-      setApps(fetchedApps);
-      setCategories(fetchedCats);
+      if (isFullFetch) {
+        // Full Fetch Path
+        [appsSnap, catsSnap] = await Promise.all([
+          getDocs(collection(db, 'apps')),
+          getDocs(collection(db, 'categories'))
+        ]);
+      } else {
+        // Delta Fetch Path - Fetch ONLY items updated since last sync
+        const lastSyncTimestamp = Timestamp.fromMillis(lastSyncTime.current);
+        const appsQuery = query(collection(db, 'apps'), where('updatedAt', '>', lastSyncTimestamp));
+        const catsQuery = query(collection(db, 'categories'), where('updatedAt', '>', lastSyncTimestamp));
+        
+        [appsSnap, catsSnap] = await Promise.all([
+          getDocs(appsQuery),
+          getDocs(catsQuery)
+        ]);
+      }
 
-      // Save to localStorage with 30-min TTL
-      cacheService.set(CACHE_KEYS.APPS, fetchedApps);
-      cacheService.set(CACHE_KEYS.CATEGORIES, fetchedCats);
+      // Process Incoming Apps
+      const incomingApps = appsSnap.docs.map(d => ({ id: d.id, ...d.data() } as AppItemData));
+      let mergedApps = isFullFetch ? incomingApps : [...currentApps];
+
+      if (!isFullFetch && incomingApps.length > 0) {
+        // Merge Delta Logic
+        incomingApps.forEach(newApp => {
+          const idx = mergedApps.findIndex(a => a.id === newApp.id);
+          if (idx > -1) {
+            mergedApps[idx] = newApp;
+          } else {
+            mergedApps.push(newApp);
+          }
+        });
+      }
+
+      // Final Filter: Only show published apps to visitors
+      const finalApps = mergedApps.filter(item => !item.status || item.status === 'published');
+
+      // Process Incoming Categories
+      const incomingCats = catsSnap.docs.map(d => ({ id: d.id, ...d.data() } as CategoryData));
+      let mergedCats = isFullFetch ? incomingCats : [...currentCats];
+      
+      if (!isFullFetch && incomingCats.length > 0) {
+        incomingCats.forEach(newCat => {
+          const idx = mergedCats.findIndex(c => c.id === newCat.id);
+          if (idx > -1) {
+            mergedCats[idx] = newCat;
+          } else {
+            mergedCats.push(newCat);
+          }
+        });
+      }
+
+      // Update State
+      setApps(finalApps);
+      setCategories(mergedCats);
+
+      // Save to cache & update metadata
+      if (finalApps.length > 0 || isFullFetch) {
+        cacheService.set(CACHE_KEYS.APPS, finalApps);
+        cacheService.set(CACHE_KEYS.CATEGORIES, mergedCats);
+        
+        const now = Date.now();
+        localStorage.setItem('appflex_last_sync_time', now.toString());
+        lastSyncTime.current = now;
+
+        if (settings.catalogVersion !== undefined) {
+          localStorage.setItem('catalog_version_cached', settings.catalogVersion.toString());
+          lastCatalogVersion.current = settings.catalogVersion;
+        }
+      }
+
+      console.log(`[AppsProvider] Sync Success: Merged ${finalApps.length} apps total.`);
     } catch (err) {
-      console.warn('[AppsProvider] Fetch failed:', err);
+      console.error('[AppsProvider] Sync error:', err);
+      // Fallback to existing state if fetch fails
+      if (currentApps.length > 0) {
+        setApps(currentApps);
+        setCategories(currentCats);
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [settings.catalogVersion]);
 
   useEffect(() => {
-    fetchCatalog(false);
-  }, [fetchCatalog]);
+    // Only trigger fetch when settings are loaded and we have a version to compare
+    if (settings.catalogVersion !== undefined) {
+      fetchCatalog(false);
+    }
+  }, [fetchCatalog, settings.catalogVersion]);
 
   const refreshApps = async (force = true) => {
     if (force) {

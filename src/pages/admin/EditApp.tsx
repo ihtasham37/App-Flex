@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { doc, getDoc, updateDoc, serverTimestamp, onSnapshot, collection } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp, onSnapshot, collection, increment, getDocs, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { 
   Package, Info, Image as ImageIcon, 
-  Save, ArrowLeft, Smartphone, Star, Film, Gamepad2, Layers, Monitor
+  Save, ArrowLeft, Smartphone, Star, Film, Layers, Monitor
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { cacheService } from '../../lib/cacheService';
@@ -21,7 +21,7 @@ export default function AdminEditApp() {
   const [categories, setCategories] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
-    itemType: 'app' as 'app' | 'game' | 'bundle' | 'pc',
+    itemType: 'app' as 'app' | 'bundle' | 'pc',
     name: '',
     appNumber: '',
     developer: '',
@@ -55,7 +55,7 @@ export default function AdminEditApp() {
         if (appSnap.exists()) {
           const data = appSnap.data();
           setFormData({
-            itemType: data.itemType || (data.category?.toLowerCase().includes('pc') ? 'pc' : data.category?.toLowerCase().includes('game') ? 'game' : data.category?.toLowerCase().includes('bundle') ? 'bundle' : 'app'),
+            itemType: data.itemType === 'pc' ? 'pc' : data.itemType === 'bundle' ? 'bundle' : (data.category?.toLowerCase().includes('pc') ? 'pc' : data.category?.toLowerCase().includes('bundle') ? 'bundle' : 'app'),
             name: data.name || '',
             appNumber: data.appNumber || '',
             developer: data.developer || '',
@@ -110,6 +110,7 @@ export default function AdminEditApp() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!appId) return;
+
     setSaving(true);
     setError('');
 
@@ -127,7 +128,17 @@ export default function AdminEditApp() {
       };
 
       await updateDoc(doc(db, 'apps', appId), updateData);
-      cacheService.clearAll();
+      
+      // Update catalog version to trigger Delta Sync for all users
+      try {
+        await updateDoc(doc(db, 'settings', 'global'), {
+          catalogVersion: increment(1),
+          lastCatalogUpdate: Date.now()
+        });
+      } catch (err) {
+        console.warn('Version update failed:', err);
+      }
+
       navigate('/admin/apps');
     } catch (err: any) {
       setError(err.message || 'Failed to update item');
@@ -137,7 +148,6 @@ export default function AdminEditApp() {
   };
 
   const isBundle = formData.itemType === 'bundle';
-  const isGame = formData.itemType === 'game';
   const isPC = formData.itemType === 'pc';
 
   if (loading) {
@@ -152,7 +162,7 @@ export default function AdminEditApp() {
           Back to App Management
         </Button>
         <h1 className="text-2xl font-black text-gray-900">
-          Edit {isBundle ? 'Video Bundle' : isGame ? 'Game' : isPC ? 'PC Soft' : 'Android App'}
+          Edit {isBundle ? 'Video Bundle' : isPC ? 'PC Soft' : 'Android App'}
         </h1>
       </div>
 
@@ -166,7 +176,7 @@ export default function AdminEditApp() {
               <h2 className="font-black uppercase tracking-widest text-xs">Main Type</h2>
             </div>
             
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button
                 type="button"
                 onClick={() => setFormData(prev => ({ ...prev, itemType: 'app' }))}
@@ -179,20 +189,6 @@ export default function AdminEditApp() {
               >
                 <Smartphone size={18} />
                 <span>App</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFormData(prev => ({ ...prev, itemType: 'game' }))}
-                className={cn(
-                  "p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all font-black text-[10px]",
-                  formData.itemType === 'game'
-                    ? "border-emerald-600 bg-emerald-600 text-white shadow-md shadow-emerald-500/20" 
-                    : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300"
-                )}
-              >
-                <Gamepad2 size={18} />
-                <span>Game</span>
               </button>
 
               <button
@@ -230,13 +226,13 @@ export default function AdminEditApp() {
             <div className="flex items-center gap-2 text-blue-600 mb-2">
               <Package size={20} />
               <h2 className="font-black uppercase tracking-widest text-sm">
-                {isBundle ? 'Video Bundle Information' : isGame ? 'Game Information' : isPC ? 'PC Software Information' : 'App Information'}
+                {isBundle ? 'Video Bundle Information' : isPC ? 'PC Software Information' : 'App Information'}
               </h2>
             </div>
             
             <div className="grid sm:grid-cols-2 gap-6">
               <Input
-                label={isBundle ? "Bundle Title" : isGame ? "Game Name" : isPC ? "Software Name" : "App Name"}
+                label={isBundle ? "Bundle Title" : isPC ? "Software Name" : "App Name"}
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
@@ -435,7 +431,7 @@ export default function AdminEditApp() {
               loading={saving}
             >
               <Save size={18} className="mr-2" />
-              Update {isBundle ? 'Bundle' : isGame ? 'Game' : 'App'}
+              Update {isBundle ? 'Bundle' : isPC ? 'PC Software' : 'App'}
             </Button>
 
             <Button

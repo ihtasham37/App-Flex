@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, limit, getDocs, setDoc, doc, updateDoc, increment, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { GlassCard } from '../../components/ui/GlassCard';
+import { Button } from '../../components/ui/Button';
 import { 
   Package, Users, DownloadCloud, Film, 
-  Gamepad2, TrendingUp, Smartphone, ShieldCheck, Activity,
-  Monitor, ArrowUpRight, Clock, Star
+  TrendingUp, Smartphone, ShieldCheck, Activity,
+  Monitor, ArrowUpRight, Clock, Star, RefreshCw
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { cacheService } from '../../lib/cacheService';
+import { cn } from '../../lib/utils';
 
 interface RecentDownload {
   id: string;
@@ -20,7 +23,6 @@ interface RecentDownload {
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
     totalApps: 0,
-    totalGames: 0,
     totalPC: 0,
     totalBundles: 0,
     totalUsers: 0,
@@ -32,6 +34,38 @@ export default function AdminDashboard() {
   const [recentDownloads, setRecentDownloads] = useState<RecentDownload[]>([]);
   const [topItems, setTopItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSyncCatalog = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      console.log('Starting manual catalog sync...');
+      const appsSnap = await getDocs(collection(db, 'apps'));
+      const catsSnap = await getDocs(collection(db, 'categories'));
+      const allApps = appsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const allCats = catsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      
+      await setDoc(doc(db, 'settings', 'catalog'), {
+        apps: allApps,
+        categories: allCats,
+        updatedAt: serverTimestamp()
+      });
+
+      await updateDoc(doc(db, 'settings', 'global'), {
+        catalogVersion: increment(1),
+        lastCatalogUpdate: Date.now()
+      });
+
+      cacheService.clearAll();
+      alert('Catalog sync successful! All users will see updated data.');
+    } catch (err) {
+      console.error('Manual catalog sync failed:', err);
+      alert('Sync failed. Check console for details.');
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   useEffect(() => {
     // 1. Real-time listener on apps catalog
@@ -40,11 +74,7 @@ export default function AdminDashboard() {
       
       const apps = items.filter((i: any) => 
         i.itemType === 'app' || 
-        (!i.itemType && !i.category?.toLowerCase().includes('game') && !i.category?.toLowerCase().includes('bundle') && !i.category?.toLowerCase().includes('pc'))
-      );
-      const games = items.filter((i: any) => 
-        i.itemType === 'game' || 
-        (!i.itemType && i.category?.toLowerCase().includes('game'))
+        (!i.itemType && !i.category?.toLowerCase().includes('bundle') && !i.category?.toLowerCase().includes('pc'))
       );
       const pc = items.filter((i: any) => 
         i.itemType === 'pc' || 
@@ -67,7 +97,6 @@ export default function AdminDashboard() {
       setStats(prev => ({
         ...prev,
         totalApps: apps.length,
-        totalGames: games.length,
         totalPC: pc.length,
         totalBundles: bundles.length,
         publishedItems: published.length,
@@ -126,7 +155,7 @@ export default function AdminDashboard() {
     };
   }, []);
 
-  const totalContent = stats.totalApps + stats.totalGames + stats.totalPC + stats.totalBundles;
+  const totalContent = stats.totalApps + stats.totalPC + stats.totalBundles;
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
@@ -136,14 +165,26 @@ export default function AdminDashboard() {
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Analytics Dashboard</h1>
           <p className="text-xs text-slate-500 font-medium mt-0.5">Real-time marketplace ecosystem metrics & analytics overview.</p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold shadow-xs">
-          <Activity size={14} className="animate-pulse text-emerald-500" />
-          <span>Real-time Live Sync Active</span>
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleSyncCatalog}
+            loading={syncing}
+            className="rounded-xl font-bold text-[11px] h-9 border-slate-200"
+          >
+            <RefreshCw size={14} className={cn("mr-1.5", syncing && "animate-spin")} />
+            Sync Public Catalog
+          </Button>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold shadow-xs">
+            <Activity size={14} className="animate-pulse text-emerald-500" />
+            <span>Real-time Live Sync Active</span>
+          </div>
         </div>
       </div>
 
       {/* Primary Analytics KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
         
         {/* 1. Apps Count */}
         <div className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between hover:border-blue-300 transition-colors">
@@ -159,21 +200,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* 2. Games Count */}
-        <div className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between hover:border-emerald-300 transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Games</span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <Gamepad2 size={16} />
-            </div>
-          </div>
-          <div className="mt-3">
-            <h3 className="text-2xl font-black text-slate-900 leading-none">{loading ? '...' : stats.totalGames}</h3>
-            <p className="text-[10px] text-slate-400 font-semibold mt-1">Mobile Games</p>
-          </div>
-        </div>
-
-        {/* 3. PC Softwares Count */}
+        {/* 2. PC Softwares Count */}
         <div className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between hover:border-cyan-300 transition-colors">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">PC Softwares</span>
@@ -187,7 +214,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* 4. Video Bundles Count */}
+        {/* 3. Video Bundles Count */}
         <div className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between hover:border-purple-300 transition-colors">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Bundles</span>
@@ -201,7 +228,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* 5. Registered Users */}
+        {/* 4. Registered Users */}
         <div className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between hover:border-amber-300 transition-colors">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Users</span>
@@ -215,7 +242,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* 6. Total Downloads */}
+        {/* 5. Total Downloads */}
         <div className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between hover:border-indigo-300 transition-colors">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Downloads</span>
@@ -257,22 +284,6 @@ export default function AdminDashboard() {
                 <div 
                   className="h-full bg-blue-600 rounded-full transition-all duration-500" 
                   style={{ width: `${totalContent > 0 ? (stats.totalApps / totalContent) * 100 : 0}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Games bar */}
-            <div>
-              <div className="flex items-center justify-between text-xs font-bold mb-1 text-slate-700">
-                <span className="flex items-center gap-1.5">
-                  <Gamepad2 size={13} className="text-emerald-600" /> Mobile Games
-                </span>
-                <span>{stats.totalGames} ({totalContent > 0 ? Math.round((stats.totalGames / totalContent) * 100) : 0}%)</span>
-              </div>
-              <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-emerald-500 rounded-full transition-all duration-500" 
-                  style={{ width: `${totalContent > 0 ? (stats.totalGames / totalContent) * 100 : 0}%` }}
                 />
               </div>
             </div>

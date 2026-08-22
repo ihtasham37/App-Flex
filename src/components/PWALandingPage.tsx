@@ -121,6 +121,16 @@ export const PWALandingPage: React.FC = () => {
                   <span className="font-bold text-blue-600">Note:</span> If the app does not install automatically, tap your browser menu (<span className="font-bold text-slate-800">3 dots</span> at top right) and select <span className="font-bold text-blue-600">"Install app"</span> or <span className="font-bold text-blue-600">"Add to Home Screen"</span>.
                 </p>
               </div>
+
+              <button 
+                onClick={() => {
+                  localStorage.setItem('pwa_installed', 'true');
+                  window.location.reload();
+                }}
+                className="text-[11px] font-black text-slate-400 hover:text-slate-600 transition-colors uppercase tracking-widest underline underline-offset-4"
+              >
+                Or Continue to Website
+              </button>
             </>
           )}
 

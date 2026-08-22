@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, deleteDoc, doc, updateDoc, increment, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { Link } from 'react-router-dom';
 import { GlassCard } from '../../components/ui/GlassCard';
@@ -7,7 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { 
   Plus, Search, Edit3, Trash2, 
-  Eye, Smartphone, Gamepad2, Film, Layers, Monitor
+  Eye, Smartphone, Film, Layers, Monitor
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { cacheService } from '../../lib/cacheService';
@@ -16,7 +16,7 @@ export default function AdminApps() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'app' | 'game' | 'bundle' | 'pc'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'app' | 'bundle' | 'pc'>('all');
 
   useEffect(() => {
     // Real-time live catalog listener
@@ -35,6 +35,28 @@ export default function AdminApps() {
     if (window.confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
       try {
         await deleteDoc(doc(db, 'apps', itemId));
+        
+        // Rebuild the catalog snapshot for 33k user optimization
+        try {
+          const appsSnap = await getDocs(collection(db, 'apps'));
+          const catsSnap = await getDocs(collection(db, 'categories'));
+          const allApps = appsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const allCats = catsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          
+          await setDoc(doc(db, 'settings', 'catalog'), {
+            apps: allApps,
+            categories: allCats,
+            updatedAt: serverTimestamp()
+          });
+
+          await updateDoc(doc(db, 'settings', 'global'), {
+            catalogVersion: increment(1),
+            lastCatalogUpdate: Date.now()
+          });
+        } catch (err) {
+          console.warn('Catalog sync failed:', err);
+        }
+
         cacheService.clearAll();
       } catch (error) {
         console.error("Delete error:", error);
@@ -43,9 +65,8 @@ export default function AdminApps() {
   };
 
   const getItemType = (item: any) => {
-    if (item.itemType) return item.itemType;
+    if (item.itemType) return item.itemType === 'pc' ? 'pc' : item.itemType === 'bundle' ? 'bundle' : 'app';
     const cat = item.category?.toLowerCase() || '';
-    if (cat.includes('game')) return 'game';
     if (cat.includes('bundle')) return 'bundle';
     if (cat.includes('pc')) return 'pc';
     return 'app';
@@ -64,7 +85,6 @@ export default function AdminApps() {
   });
 
   const appsCount = items.filter(i => getItemType(i) === 'app').length;
-  const gamesCount = items.filter(i => getItemType(i) === 'game').length;
   const bundlesCount = items.filter(i => getItemType(i) === 'bundle').length;
   const pcCount = items.filter(i => getItemType(i) === 'pc').length;
 
@@ -75,16 +95,16 @@ export default function AdminApps() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-900">Content & App Management</h1>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">Manage Apps, Games, and Video Bundles in one unified console.</p>
+          <p className="text-xs text-slate-500 font-medium mt-0.5">Manage Apps, PC Software, and Video Bundles in one unified console.</p>
         </div>
         <Link to="/admin/apps/new">
           <Button variant="gradient" className="shadow-md shadow-blue-500/20 text-xs font-bold h-10 px-4 rounded-xl">
-            <Plus size={16} className="mr-1.5" /> Add App / Game / Bundle / PC
+            <Plus size={16} className="mr-1.5" /> Add App / PC / Bundle
           </Button>
         </Link>
       </div>
 
-      {/* Main Filter Tabs (All, Apps, Games, Video Bundles, PC) */}
+      {/* Main Filter Tabs (All, Apps, Video Bundles, PC) */}
       <div className="flex items-center gap-2 border-b border-slate-200 pb-3 overflow-x-auto scrollbar-hide">
         <button
           onClick={() => setTypeFilter('all')}
@@ -113,16 +133,16 @@ export default function AdminApps() {
         </button>
 
         <button
-          onClick={() => setTypeFilter('game')}
+          onClick={() => setTypeFilter('pc')}
           className={cn(
             "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap",
-            typeFilter === 'game'
-              ? "bg-emerald-600 text-white shadow-xs"
+            typeFilter === 'pc'
+              ? "bg-slate-700 text-white shadow-xs"
               : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
           )}
         >
-          <Gamepad2 size={14} />
-          <span>Games ({gamesCount})</span>
+          <Monitor size={14} />
+          <span>PC Software ({pcCount})</span>
         </button>
 
         <button
@@ -136,19 +156,6 @@ export default function AdminApps() {
         >
           <Film size={14} />
           <span>Video Bundles ({bundlesCount})</span>
-        </button>
-
-        <button
-          onClick={() => setTypeFilter('pc')}
-          className={cn(
-            "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap",
-            typeFilter === 'pc'
-              ? "bg-slate-700 text-white shadow-xs"
-              : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-          )}
-        >
-          <Monitor size={14} />
-          <span>PC Software ({pcCount})</span>
         </button>
       </div>
 
@@ -193,7 +200,6 @@ export default function AdminApps() {
                             <div className="flex items-center gap-1.5">
                               <span className={cn(
                                 "text-[8px] font-black uppercase px-1.5 py-0.2 rounded",
-                                type === 'game' ? "bg-emerald-100 text-emerald-700" :
                                 type === 'bundle' ? "bg-purple-100 text-purple-700" : 
                                 type === 'pc' ? "bg-slate-100 text-slate-700" : "bg-blue-100 text-blue-700"
                               )}>

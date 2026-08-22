@@ -6,10 +6,10 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
 import { 
   Download, ArrowLeft, Star, Share2, 
-  Smartphone, Heart, ShieldCheck, X, Film, Gamepad2, Monitor
+  Smartphone, Heart, ShieldCheck, X, Film, Monitor
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn, isBundleItem, isGameItem, isPCItem } from '../lib/utils';
+import { cn, isBundleItem, isPCItem } from '../lib/utils';
 import { useSettings } from '../context/SettingsContext';
 import { useAds } from '../context/AdsContext';
 import { useApps } from '../context/AppsContext';
@@ -31,28 +31,41 @@ interface AppData {
   mainImage: string;
   screenshots: string[];
   downloadUrl: string;
-  itemType?: 'app' | 'game' | 'bundle' | 'pc';
+  status?: string;
+  itemType?: 'app' | 'bundle' | 'pc';
   showOnBanner?: boolean;
 }
 
 import { RelatedAppsSidebar } from '../components/RelatedAppsSidebar';
 import { SEO } from '../components/SEO';
 
-function RelatedItems({ currentCategory, currentAppId }: { currentCategory: string, currentAppId: string, settings: any }) {
+interface RelatedItemsProps {
+  currentCategory: string;
+  currentAppId: string;
+  settings: any;
+  pageVisitId?: string;
+}
+
+const RelatedItems: React.FC<RelatedItemsProps> = ({ 
+  currentCategory, 
+  currentAppId, 
+  pageVisitId 
+}) => {
+  const { apps: allApps } = useApps();
   const [relatedItems, setRelatedItems] = useState<AppData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchRelated() {
+    function fetchRelated() {
       try {
-        const q = query(
-          collection(db, 'apps'),
-          where('category', '==', currentCategory)
-        );
-        const snap = await getDocs(q);
-        let items = snap.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as AppData))
-          .filter(item => item.id !== currentAppId);
+        setLoading(true);
+        // Use in-memory apps from AppsContext instead of Firestore query (0 reads!)
+        let items = allApps
+          .filter(item => 
+            item.category === currentCategory && 
+            item.id !== currentAppId && 
+            (!item.status || item.status === 'published')
+          ) as unknown as AppData[];
 
         // Shuffle
         for (let i = items.length - 1; i > 0; i--) {
@@ -60,50 +73,75 @@ function RelatedItems({ currentCategory, currentAppId }: { currentCategory: stri
           [items[i], items[j]] = [items[j], items[i]];
         }
 
-        // We want 2 rows. 
-        // On mobile (4 cols) -> 8 items
-        // On desktop (5 cols) -> 10 items
+        // We want 2 rows (up to 10 items total, 5 items per line)
         setRelatedItems(items.slice(0, 10));
       } catch (error) {
-        console.error("Error fetching related items:", error);
+        console.error("Error setting related items:", error);
       } finally {
         setLoading(false);
       }
     }
-    fetchRelated();
-  }, [currentCategory, currentAppId]);
+    if (allApps.length > 0) {
+      fetchRelated();
+    }
+  }, [currentCategory, currentAppId, allApps]);
 
   if (loading) return <div className="h-20 flex items-center justify-center text-xs text-slate-400">Loading Related Items...</div>;
   if (relatedItems.length === 0) return null;
 
+  const line1 = relatedItems.slice(0, 5);
+  const line2 = relatedItems.slice(5, 10);
+
+  const renderCard = (item: AppData) => (
+    <Link 
+      key={item.id} 
+      to={`/apps/${item.id}`} 
+      onClick={() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' })}
+      className="group flex flex-col items-center text-center select-none"
+    >
+      <div className="aspect-square w-full rounded-2xl bg-white p-1 shadow-xs border border-slate-200/90 group-hover:shadow-lg transition-all overflow-hidden flex items-center justify-center group-hover:-translate-y-1">
+        <img 
+          src={item.mainImage} 
+          alt={item.name} 
+          className="w-full h-full object-cover rounded-xl" 
+        />
+      </div>
+      <div className="w-full mt-2 px-0.5 space-y-0.5">
+        <h3 className="font-black text-slate-800 text-[10px] sm:text-xs truncate leading-tight transition-colors uppercase group-hover:text-blue-600">
+          {item.name}
+        </h3>
+        <div className="flex items-center justify-center gap-1 text-yellow-500">
+          <Star size={10} fill="currentColor" />
+          <span className="text-[10px] font-black text-slate-700">{item.rating || '4.5'}</span>
+        </div>
+      </div>
+    </Link>
+  );
+
   return (
-    <section className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-8 shadow-xs space-y-4">
+    <section className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-8 shadow-xs space-y-5">
       <div className="flex items-center justify-between px-1 border-l-4 border-slate-900 pl-3">
         <h2 className="text-lg font-black tracking-tight text-slate-800 uppercase italic">Related Items</h2>
       </div>
 
+      {/* Line 1 of Related Items */}
       <div className="grid grid-cols-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-4">
-        {relatedItems.map((item) => (
-          <Link key={item.id} to={`/apps/${item.id}`} className="group flex flex-col items-center text-center select-none">
-            <div className="aspect-square w-full rounded-2xl bg-white p-1 shadow-xs border border-slate-200/90 group-hover:shadow-lg transition-all overflow-hidden flex items-center justify-center group-hover:-translate-y-1">
-              <img 
-                src={item.mainImage} 
-                alt={item.name} 
-                className="w-full h-full object-cover rounded-xl" 
-              />
-            </div>
-            <div className="w-full mt-2 px-0.5 space-y-0.5">
-              <h3 className="font-black text-slate-800 text-[10px] sm:text-xs truncate leading-tight transition-colors uppercase group-hover:text-blue-600">
-                {item.name}
-              </h3>
-              <div className="flex items-center justify-center gap-1 text-yellow-500">
-                <Star size={10} fill="currentColor" />
-                <span className="text-[10px] font-black text-slate-700">{item.rating || '4.5'}</span>
-              </div>
-            </div>
-          </Link>
-        ))}
+        {line1.map(renderCard)}
       </div>
+
+      {/* Advertisement placed directly between Line 1 and Line 2 of Related Items */}
+      {line2.length > 0 && (
+        <div className="py-2 border-y border-slate-100/80">
+          <AdSlot page="detail" slotIndex={1} pageVisitId={pageVisitId} />
+        </div>
+      )}
+
+      {/* Line 2 of Related Items */}
+      {line2.length > 0 && (
+        <div className="grid grid-cols-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-4">
+          {line2.map(renderCard)}
+        </div>
+      )}
     </section>
   );
 }
@@ -128,9 +166,13 @@ export default function AppDetails() {
   const [pageVisitId] = useState(() => Math.random().toString(36).substring(2, 9));
 
   useEffect(() => {
+    // Scroll to top immediately whenever navigating to a different app
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+
     async function fetchAppDetails() {
       if (!appId) return;
       try {
+        setLoading(true);
         const cachedOrFetched = await getAppById(appId);
         
         if (cachedOrFetched) {
@@ -261,7 +303,6 @@ export default function AppDetails() {
   if (!app) return null;
 
   const isBundle = isBundleItem(app);
-  const isGame = isGameItem(app);
   const isPC = isPCItem(app);
 
   // Filter valid screenshots only
@@ -270,14 +311,11 @@ export default function AppDetails() {
   // Compute Category Default Description
   const itemType = app.itemType || (
     app.category?.toLowerCase().includes('pc') ? 'pc' :
-    app.category?.toLowerCase().includes('game') ? 'game' :
     app.category?.toLowerCase().includes('bundle') ? 'bundle' : 'app'
   );
 
   const defaultCategoryDescription = 
-    itemType === 'game'
-      ? (settings.defaultGamesDescription || 'Download high-performance MOD games, unlimited coins/gems titles, unlocked levels, and verified APKs for the best gaming experience on APPFLEX.')
-      : itemType === 'pc'
+    itemType === 'pc'
       ? (settings.defaultPCAppsDescription || 'Download full-version desktop software, PC utilities, Windows productivity tools, and creative applications for maximum performance on APPFLEX.')
       : itemType === 'bundle'
       ? (settings.defaultBundlesDescription || 'Download premium video editing packs, Lightroom presets, Premiere Pro templates, cinematic LUTs, overlays, and sound FX bundles on APPFLEX.')
@@ -361,8 +399,6 @@ export default function AppDetails() {
                   "inline-block px-3 py-1 text-[11px] font-black uppercase tracking-wider rounded-lg mb-1 border shadow-xs",
                   isBundle 
                     ? "bg-purple-50 text-purple-700 border-purple-200" 
-                    : isGame
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                     : "bg-blue-50 text-blue-600 border-blue-100"
                 )}>
                   {app.category}
@@ -415,8 +451,6 @@ export default function AppDetails() {
                 "w-full sm:flex-1 h-14 rounded-2xl text-base font-black text-white shadow-xl transition-all active:scale-[0.98]",
                 isBundle 
                   ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/25" 
-                  : isGame 
-                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-500/25"
                   : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-blue-500/25"
               )}
               loading={downloading}
@@ -424,8 +458,6 @@ export default function AppDetails() {
               <Download size={22} className="mr-2" />
               {isBundle 
                 ? (app.size && app.size.trim() !== '' ? `Download Bundle (${app.size})` : 'Download Bundle')
-                : isGame 
-                ? (app.size && app.size.trim() !== '' ? `Download Game (${app.size})` : 'Download Game')
                 : isPC
                 ? (app.size && app.size.trim() !== '' ? `Download PC Software (${app.size})` : 'Download PC Software')
                 : (app.size && app.size.trim() !== '' ? `Download APK (${app.size})` : 'Download APK')
@@ -435,7 +467,7 @@ export default function AppDetails() {
             <div className="flex items-center gap-2 text-[12px] font-black text-emerald-600 bg-emerald-50 px-4 py-3 rounded-2xl border border-emerald-200 whitespace-nowrap shadow-sm">
               <ShieldCheck size={20} />
               <span>
-                {isBundle ? '100% Tested Pack' : isGame ? '100% Tested Game' : isPC ? '100% Clean Software' : '100% Clean APK'}
+                {isBundle ? '100% Tested Pack' : isPC ? '100% Clean Software' : '100% Clean APK'}
               </span>
             </div>
           </div>
@@ -448,8 +480,6 @@ export default function AppDetails() {
               <div className="flex items-center gap-2.5">
                 {isBundle ? (
                   <Film size={20} className="text-purple-600" />
-                ) : isGame ? (
-                  <Gamepad2 size={20} className="text-emerald-600" />
                 ) : isPC ? (
                   <Monitor size={20} className="text-slate-900" />
                 ) : (
@@ -490,7 +520,7 @@ export default function AppDetails() {
           <div className="flex items-center gap-3">
             <div className="w-1.5 h-6 bg-blue-600 rounded-full" />
             <h2 className="text-lg font-black tracking-tight text-slate-800 uppercase">
-              {isBundle ? 'What\'s Inside This Bundle' : isGame ? 'Game Gameplay & Story' : 'Detailed Description'}
+              {isBundle ? 'What\'s Inside This Bundle' : 'Detailed Description'}
             </h2>
           </div>
           <div className="text-slate-700 font-medium leading-relaxed text-sm sm:text-base whitespace-pre-line bg-slate-50/70 p-6 rounded-2xl border border-slate-100">
@@ -498,20 +528,20 @@ export default function AppDetails() {
           </div>
         </section>
 
-        {/* Advertisement #2 (Above Related Items) */}
-        <AdSlot page="detail" slotIndex={1} pageVisitId={pageVisitId} />
-
-        {/* Related Items Section */}
+        {/* Related Items Section (Includes Ad #2 placed between Line 1 and Line 2) */}
         <RelatedItems 
+          key={`related-${app.id}`}
           currentCategory={app.category} 
           currentAppId={app.id} 
-          settings={settings} 
+          settings={settings}
+          pageVisitId={pageVisitId}
         />
       </div>
 
       {/* Sidebar Column */}
       <div className="lg:col-span-4 xl:col-span-3">
         <RelatedAppsSidebar 
+          key={`sidebar-${app.id}`}
           currentCategory={app.category} 
           currentAppId={app.id} 
         />

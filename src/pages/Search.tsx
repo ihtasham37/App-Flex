@@ -105,9 +105,9 @@ export default function Search() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-24 max-w-7xl mx-auto">
       <SEO 
-        title={searchTerm ? `Search Results for "${searchTerm}"` : "Search APKs, MOD Games, PC Softs & Bundles"}
-        description="Search thousands of verified Android apps, MOD games, PC software, Lightroom presets, and video bundles on APPFLEX."
-        keywords="search apps, find APKs, MOD games search, video bundles search, APPFLEX search"
+        title={searchTerm ? `Search Results for "${searchTerm}"` : "Search APKs, PC Softs & Video Bundles"}
+        description="Search thousands of verified Android apps, PC software, Lightroom presets, and video bundles on APPFLEX."
+        keywords="search apps, find APKs, PC software search, video bundles search, APPFLEX search"
       />
       {/* Main Content */}
       <div className="lg:col-span-8 xl:col-span-9 space-y-8">
@@ -245,7 +245,7 @@ export default function Search() {
               <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 rounded-[40px] p-8 sm:p-12 text-white relative overflow-hidden shadow-2xl shadow-blue-600/20">
                  <div className="relative z-10 space-y-5 max-w-md">
                    <h2 className="text-3xl sm:text-4xl font-black leading-tight tracking-tight uppercase italic">Discover the Best Catalog</h2>
-                   <p className="text-blue-100 text-base font-medium leading-relaxed">Our library is updated daily with premium apps, games, and video bundles.</p>
+                   <p className="text-blue-100 text-base font-medium leading-relaxed">Our library is updated daily with premium apps, PC software, and video bundles.</p>
                    <Link to="/explore" className="inline-block">
                      <Button className="bg-white text-blue-600 hover:bg-blue-50 font-black px-8 h-12 rounded-2xl shadow-xl shadow-black/10 transition-transform hover:scale-105 active:scale-95 uppercase tracking-widest">Explore Catalog</Button>
                    </Link>

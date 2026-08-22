@@ -56,35 +56,17 @@ export function isBundleItem(item: any): boolean {
 export function isPCItem(item: any): boolean {
   if (!item) return false;
   if (item.itemType === 'pc') return true;
-  if (item.itemType === 'app' || item.itemType === 'game' || item.itemType === 'bundle') return false;
+  if (item.itemType === 'app' || item.itemType === 'bundle') return false;
 
   const cat = (item.category || '').toLowerCase().trim();
   return cat.includes('pc') || cat.includes('windows') || cat.includes('desktop');
 }
 
-export function isGameItem(item: any): boolean {
-  if (!item) return false;
-  if (item.itemType === 'game') return true;
-  if (item.itemType === 'app' || item.itemType === 'bundle' || item.itemType === 'pc') return false;
-
-  const cat = (item.category || '').toLowerCase().trim();
-  return (
-    cat.includes('game') ||
-    cat.includes('action') ||
-    cat.includes('arcade') ||
-    cat.includes('racing') ||
-    cat.includes('rpg') ||
-    cat.includes('puzzle') ||
-    cat.includes('adventure') ||
-    cat.includes('sports')
-  );
-}
-
 export function isAppItem(item: any): boolean {
   if (!item) return false;
   if (item.itemType === 'app') return true;
-  if (item.itemType === 'game' || item.itemType === 'bundle' || item.itemType === 'pc') return false;
+  if (item.itemType === 'bundle' || item.itemType === 'pc') return false;
 
-  return !isBundleItem(item) && !isGameItem(item) && !isPCItem(item);
+  return !isBundleItem(item) && !isPCItem(item);
 }
 

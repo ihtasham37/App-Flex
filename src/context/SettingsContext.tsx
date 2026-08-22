@@ -22,6 +22,8 @@ export interface AppSettings {
   defaultGamesDescription?: string;
   defaultPCAppsDescription?: string;
   defaultBundlesDescription?: string;
+  catalogVersion?: number;
+  lastCatalogUpdate?: number;
 }
 
 interface SettingsContextType {
@@ -47,6 +49,8 @@ const defaultSettings: AppSettings = {
   defaultGamesDescription: 'Download high-performance MOD games, unlimited coins/gems titles, unlocked levels, and verified APKs for the best gaming experience on APPFLEX.',
   defaultPCAppsDescription: 'Download full-version desktop software, PC utilities, Windows productivity tools, and creative applications for maximum performance on APPFLEX.',
   defaultBundlesDescription: 'Download premium video editing packs, Lightroom presets, Premiere Pro templates, cinematic LUTs, overlays, and sound FX bundles on APPFLEX.',
+  catalogVersion: 1,
+  lastCatalogUpdate: Date.now(),
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -117,10 +121,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
         setLoading(false);
       } else {
-        setDoc(doc(db, 'settings', 'global'), defaultSettings).catch(err => {
-          console.warn("Could not initialize settings (likely not admin):", err);
-          setLoading(false);
-        });
+        // We no longer automatically initialize for every user to avoid "Missing or insufficient permissions" warnings.
+        // Admins can initialize from the Admin Settings by saving settings.
+        setSettings(defaultSettings);
+        setLoading(false);
       }
     }, (error) => {
       console.error("Settings listener failed:", error);

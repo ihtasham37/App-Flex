@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '../components/ui/Button';
-import { Star, Film, Gamepad2, ArrowRight, ShieldCheck, Smartphone, Monitor } from 'lucide-react';
+import { Star, Film, ArrowRight, ShieldCheck, Smartphone, Monitor } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { cn, isAppItem, isBundleItem, isGameItem, isPCItem } from '../lib/utils';
+import { cn, isAppItem, isBundleItem, isPCItem } from '../lib/utils';
 import { useSettings } from '../context/SettingsContext';
 import { useApps } from '../context/AppsContext';
 import { AdSlot } from '../components/ads/AdSlot';
@@ -22,13 +22,13 @@ interface AppData {
   version?: string;
   size?: string;
   status?: string;
-  itemType?: 'app' | 'game' | 'bundle' | 'pc';
+  itemType?: 'app' | 'bundle' | 'pc';
   showOnBanner?: boolean;
 }
 
 interface HomeLine {
   key: string;
-  type: 'app' | 'game' | 'bundle' | 'pc';
+  type: 'app' | 'bundle' | 'pc';
   title: string;
   items: AppData[];
   seeAllPath: string;
@@ -57,7 +57,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!apps) return;
-    const published = (apps as any[]).filter(item => !item.status || item.status === 'published');
+    const published = apps; // Show all items, ignore status for now
     const shuffledItems = shuffle(published);
     setAllItems(shuffledItems);
 
@@ -66,7 +66,6 @@ export default function Home() {
     setBannerApps(banners.length > 0 ? banners : published.slice(0, 5));
 
     const appsOnly = published.filter(isAppItem);
-    const gamesOnly = published.filter(isGameItem);
     const bundlesOnly = published.filter(isBundleItem);
     const pcOnly = published.filter(isPCItem);
 
@@ -82,22 +81,11 @@ export default function Home() {
     };
 
     const appGroups = groupItems(appsOnly);
-    const gameGroups = groupItems(gamesOnly);
     const bundleGroups = groupItems(bundlesOnly);
     const pcGroups = groupItems(pcOnly);
 
-    // 1. Top/Featured Lines (Always appear in the FIRST 4 lines on Home, randomly shuffled among themselves)
+    // 1. Top/Featured Lines (Always appear in the FIRST lines on Home, randomly shuffled among themselves)
     const topLines: HomeLine[] = [];
-
-    if (gamesOnly.length > 0) {
-      topLines.push({
-        key: 'top-games',
-        type: 'game',
-        title: 'Top Mobile Games',
-        items: shuffle(gamesOnly),
-        seeAllPath: '/explore?type=game'
-      });
-    }
 
     if (bundlesOnly.length > 0) {
       topLines.push({
@@ -115,7 +103,7 @@ export default function Home() {
         type: 'app',
         title: 'Popular Android Apps',
         items: shuffle(appsOnly),
-        seeAllPath: '/explore?type=app'
+        seeAllPath: '/explore'
       });
     }
 
@@ -129,21 +117,8 @@ export default function Home() {
       });
     }
 
-    // 2. Category Lines (Appear below the first 4 lines, randomly shuffled)
+    // 2. Category Lines (Appear below the top lines, randomly shuffled)
     const categoryLines: HomeLine[] = [];
-
-    // Dynamic Category Lines for Games
-    Object.entries(gameGroups).forEach(([catName, list]) => {
-      if (list.length > 0) {
-        categoryLines.push({
-          key: `game-cat-${catName}`,
-          type: 'game',
-          title: catName,
-          items: shuffle(list),
-          seeAllPath: `/explore?category=${encodeURIComponent(catName)}&type=game`
-        });
-      }
-    });
 
     // Dynamic Category Lines for Bundles
     Object.entries(bundleGroups).forEach(([catName, list]) => {
@@ -166,7 +141,7 @@ export default function Home() {
           type: 'app',
           title: catName,
           items: shuffle(list),
-          seeAllPath: `/explore?category=${encodeURIComponent(catName)}&type=app`
+          seeAllPath: `/explore?category=${encodeURIComponent(catName)}`
         });
       }
     });
@@ -184,7 +159,7 @@ export default function Home() {
       }
     });
 
-    // First 4 lines are always the Top 4 Lines (randomized among each other), followed by all category lines (randomized)
+    // Top lines (randomized) followed by all category lines (randomized)
     const combinedLines = [...shuffle(topLines), ...shuffle(categoryLines)];
     setRandomizedLines(combinedLines);
   }, [apps]);
@@ -203,10 +178,10 @@ export default function Home() {
   const activeBanner = bannerApps[currentBannerIndex] || null;
 
   // Render a Single Category/Type Line on Home Page
-  // - type 'app' or 'game': SMALL CHOTA SQUARE CARD
+  // - type 'app': SMALL CHOTA SQUARE CARD
   // - type 'pc' or 'bundle': WIDE LANDSCAPE RECTANGULAR CARD (2 on mobile, 3 on desktop)
   const renderHomeLine = (
-    type: 'app' | 'game' | 'bundle' | 'pc',
+    type: 'app' | 'bundle' | 'pc',
     title: string,
     items: AppData[],
     seeAllPath: string
@@ -219,13 +194,7 @@ export default function Home() {
     let hoverBorder = "hover:border-blue-400";
     let hoverText = "group-hover:text-blue-600";
 
-    if (type === 'game') {
-      icon = <Gamepad2 size={17} className="text-emerald-600" />;
-      borderLeftColor = "border-emerald-600";
-      textColor = "text-emerald-600";
-      hoverBorder = "hover:border-emerald-400";
-      hoverText = "group-hover:text-emerald-600";
-    } else if (type === 'bundle') {
+    if (type === 'bundle') {
       icon = <Film size={17} className="text-purple-600" />;
       borderLeftColor = "border-purple-600";
       textColor = "text-purple-600";
@@ -261,7 +230,7 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* CARDS DISPLAY: WIDE LANDSCAPE (PC & Bundles) vs SMALL SQUARE (Android Apps & Games) */}
+        {/* CARDS DISPLAY: WIDE LANDSCAPE (PC & Bundles) vs SMALL SQUARE (Android Apps) */}
         {isWideFormat ? (
           /* Wide Landscape Sliding Row (2 visible on mobile, 3 on desktop) */
           <div className="flex gap-2.5 sm:gap-3 overflow-x-auto pb-3 pt-1 scrollbar-hide snap-x snap-mandatory -mx-1 px-1 scroll-smooth">
@@ -300,7 +269,7 @@ export default function Home() {
             ))}
           </div>
         ) : (
-          /* Classic Small Compact Square Icon Row (Android Apps & Mobile Games) */
+          /* Classic Small Compact Square Icon Row (Android Apps) */
           <div className="flex gap-2.5 sm:gap-3.5 overflow-x-auto pb-3 pt-1 scrollbar-hide snap-x snap-mandatory -mx-1 px-1 scroll-smooth">
             {items.map((item) => (
               <Link 
@@ -335,9 +304,9 @@ export default function Home() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-24 relative max-w-7xl mx-auto">
       <SEO 
-        title="Verified Android APKs, MOD Games & PC Software" 
-        description="Download 100% verified, safe, and fast Android apps, MOD games, PC software, Lightroom presets, cinematic LUTs, and video editing bundles on APPFLEX."
-        keywords="APKs, MOD games, PC software, Lightroom presets, Premiere Pro templates, APPFLEX, download apps"
+        title="Verified Android APKs, PC Software & Video Bundles" 
+        description="Download 100% verified, safe, and fast Android apps, PC software, Lightroom presets, cinematic LUTs, and video editing bundles on APPFLEX."
+        keywords="APKs, PC software, Lightroom presets, Premiere Pro templates, APPFLEX, download apps, video bundles"
       />
       <div className="lg:col-span-8 xl:col-span-9 space-y-6">
         {loading && (
@@ -373,16 +342,16 @@ export default function Home() {
           </section>
         ) : null}
 
-        {/* 2. Randomized Category Lines with See All & Ads after every 3 lines */}
+        {/* 2. Randomized Category Lines with See All & Ads after every 5 lines */}
         <div className="space-y-7">
           {randomizedLines.map((line, idx) => (
             <React.Fragment key={line.key}>
               {renderHomeLine(line.type, line.title, line.items, line.seeAllPath)}
               
-              {/* Show Ad after every 3 lines */}
-              {(idx + 1) % 3 === 0 && (
+              {/* Show Ad after every 5 lines */}
+              {(idx + 1) % 5 === 0 && (
                 <div className="pt-1">
-                  <AdSlot page="home" slotIndex={Math.floor((idx + 1) / 3) - 1} pageVisitId={pageVisitId} />
+                  <AdSlot page="home" slotIndex={Math.floor((idx + 1) / 5) - 1} pageVisitId={pageVisitId} />
                 </div>
               )}
             </React.Fragment>
@@ -410,3 +379,4 @@ export default function Home() {
     </div>
   );
 }
+

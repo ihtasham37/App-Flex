@@ -20,6 +20,15 @@ export default function Bundles() {
   const allCategories = Array.from(new Set(allItems.map(i => i.category).filter(Boolean)));
   const trendingApps = allItems.filter(i => !i.itemType || i.itemType === 'app').slice(0, 5);
 
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   const shuffle = <T,>(array: T[]): T[] => {
     const newArr = [...array];
     for (let i = newArr.length - 1; i > 0; i--) {
@@ -61,7 +70,7 @@ export default function Bundles() {
   // Randomize category order on the page
   const allCatNames = shuffle(Object.keys(groupedBundles));
 
-  // Helper to split array into chunks of 4 items
+  // Helper to split array into chunks of N items (1 line = 4 items on desktop)
   const chunkArray = <T,>(arr: T[], size: number): T[][] => {
     const chunks: T[][] = [];
     for (let i = 0; i < arr.length; i += size) {
@@ -70,53 +79,50 @@ export default function Bundles() {
     return chunks;
   };
 
-  // Render a block/row of bundle cards (1 per line on mobile, up to 4 on desktop)
-  const renderBundleCards = (items: any[]) => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3">
-      {items.map((bundle) => (
-        <Link 
-          key={bundle.id} 
-          to={`/apps/${bundle.id}`} 
-          className="group block"
-        >
-          {/* Wide Landscape Card Box: 1 per line (full width) on mobile, grid on desktop */}
-          <div className="p-2.5 sm:p-2.5 bg-white rounded-2xl border border-slate-200/90 hover:border-purple-400 shadow-xs hover:shadow-lg transition-all flex items-center gap-3 sm:gap-3 h-[76px] sm:h-[82px] text-left">
-            
-            {/* Left Image Thumbnail */}
-            <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-xl overflow-hidden bg-slate-100 border border-slate-100 shrink-0 shadow-xs">
-              <img 
-                src={bundle.mainImage} 
-                alt={bundle.name} 
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-              />
-            </div>
-            
-            {/* Right Info - Clear Title & Metadata */}
-            <div className="flex-1 min-w-0 flex flex-col justify-center space-y-0.5 sm:space-y-1">
-              <h3 className="font-black text-slate-900 text-xs sm:text-xs line-clamp-2 group-hover:text-purple-600 transition-colors uppercase leading-tight sm:leading-snug">
-                {bundle.name}
-              </h3>
-              
-              <div className="flex items-center gap-2 text-[10px] sm:text-[10px] font-bold text-slate-400">
-                <span className="text-yellow-500 flex items-center gap-0.5 font-black">
-                  <Star size={10} fill="currentColor" /> {bundle.rating || '4.8'}
-                </span>
-                {bundle.size && bundle.size.trim() !== '' && (
-                  <>
-                    <span>•</span>
-                    <span className="uppercase text-slate-500 font-semibold truncate">{bundle.size}</span>
-                  </>
-                )}
-              </div>
-            </div>
-
+  // Render a single bundle card
+  const renderSingleCard = (bundle: any) => (
+    <Link 
+      key={bundle.id} 
+      to={`/apps/${bundle.id}`} 
+      className="group block"
+    >
+      {/* Wide Landscape Card Box */}
+      <div className="p-2.5 sm:p-2.5 bg-white rounded-2xl border border-slate-200/90 hover:border-purple-400 shadow-xs hover:shadow-lg transition-all flex items-center gap-3 sm:gap-3 h-[76px] sm:h-[82px] text-left">
+        
+        {/* Left Image Thumbnail */}
+        <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-xl overflow-hidden bg-slate-100 border border-slate-100 shrink-0 shadow-xs">
+          <img 
+            src={bundle.mainImage} 
+            alt={bundle.name} 
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+          />
+        </div>
+        
+        {/* Right Info - Clear Title & Metadata */}
+        <div className="flex-1 min-w-0 flex flex-col justify-center space-y-0.5 sm:space-y-1">
+          <h3 className="font-black text-slate-900 text-xs sm:text-xs line-clamp-2 group-hover:text-purple-600 transition-colors uppercase leading-tight sm:leading-snug">
+            {bundle.name}
+          </h3>
+          
+          <div className="flex items-center gap-2 text-[10px] sm:text-[10px] font-bold text-slate-400">
+            <span className="text-yellow-500 flex items-center gap-0.5 font-black">
+              <Star size={10} fill="currentColor" /> {bundle.rating || '4.8'}
+            </span>
+            {bundle.size && bundle.size.trim() !== '' && (
+              <>
+                <span>•</span>
+                <span className="uppercase text-slate-500 font-semibold truncate">{bundle.size}</span>
+              </>
+            )}
           </div>
-        </Link>
-      ))}
-    </div>
+        </div>
+
+      </div>
+    </Link>
   );
 
-  let globalChunkCount = 0;
+  // Global continuous line counter across all categories for strict 5-line ads
+  let globalLineCount = 0;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-24 max-w-7xl mx-auto">
@@ -168,42 +174,57 @@ export default function Bundles() {
         {loading ? (
           <div className="py-12 text-center text-xs font-black text-slate-400 animate-pulse uppercase tracking-widest">Loading...</div>
         ) : activeCategory !== 'All' ? (
-          /* Single Category View with responsive Ad placement (every 4 items on mobile, every 8 items/2 lines on desktop) */
+          /* Single Category View with strict 5-line ad placement */
           <div className="space-y-4 pt-2">
             <div className="flex items-center gap-2 border-l-4 border-purple-600 pl-3">
               <h2 className="text-sm sm:text-base font-black tracking-tight text-slate-800 uppercase italic">
                 {activeCategory}
               </h2>
             </div>
-            {groupedBundles[activeCategory] && groupedBundles[activeCategory].length > 0 ? (
-              <div className="space-y-3.5">
-                {chunkArray(groupedBundles[activeCategory], 4).map((chunkItems, chunkIdx) => {
-                  const isEvenChunk = chunkIdx % 2 === 1; // 2nd, 4th, 6th chunk (8, 16, 24 items)
-                  return (
-                    <React.Fragment key={`bundle-single-chunk-${chunkIdx}`}>
-                      {renderBundleCards(chunkItems)}
-                      {/* Show ad after every 4 items on mobile, and after every 8 items (2 lines) on desktop */}
-                      <div className={cn("pt-2", isEvenChunk ? "block" : "block sm:hidden")}>
-                        <AdSlot page="bundle" slotIndex={chunkIdx} pageVisitId={pageVisitId} />
-                      </div>
-                    </React.Fragment>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="py-16 text-center text-slate-400 text-xs font-bold uppercase tracking-wider">
-                No items found in this category.
-              </div>
-            )}
+            {(() => {
+              const catItems = groupedBundles[activeCategory] || [];
+              if (catItems.length === 0) {
+                return (
+                  <div className="py-16 text-center text-slate-400 text-xs font-bold uppercase tracking-wider">
+                    No items found in this category.
+                  </div>
+                );
+              }
+
+              const chunkSize = isMobile ? 1 : 4;
+              const adInterval = isMobile ? 6 : 5;
+              const lines = chunkArray(catItems, chunkSize);
+
+              return (
+                <div className="space-y-3.5">
+                  {lines.map((lineItems, lineIdx) => {
+                    const showAdAfter = (lineIdx + 1) % adInterval === 0;
+                    return (
+                      <React.Fragment key={`bundle-single-line-${lineIdx}`}>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3">
+                          {lineItems.map(renderSingleCard)}
+                        </div>
+                        {showAdAfter && (
+                          <div className="pt-2">
+                            <AdSlot page="bundle" slotIndex={Math.floor((lineIdx + 1) / adInterval) - 1} pageVisitId={pageVisitId} />
+                          </div>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         ) : allCatNames.length > 0 ? (
-          /* All Categories View: All items of a category together, with ads after every 4 items on mobile & every 2 lines on desktop */
+          /* All Categories View with Continuous 5-line Counter across Categories */
           <div className="space-y-7 pt-2">
             {allCatNames.map((catName) => {
               const catItems = groupedBundles[catName] || [];
               if (catItems.length === 0) return null;
 
-              const chunks = chunkArray(catItems, 4);
+              const chunkSize = isMobile ? 1 : 4;
+              const lines = chunkArray(catItems, chunkSize);
 
               return (
                 <section key={catName} className="space-y-2.5">
@@ -216,21 +237,25 @@ export default function Bundles() {
                     </div>
                   </div>
 
-                  {/* Chunks of 4 items */}
+                  {/* Lines of items with strictly timed ads */}
                   <div className="space-y-3.5">
-                    {chunks.map((chunkItems, chunkIdx) => {
-                      globalChunkCount++;
-                      const currentGlobalCount = globalChunkCount;
-                      const isEvenChunk = currentGlobalCount % 2 === 0; // 2 lines on desktop (8 items)
+                    {lines.map((lineItems, lineIdx) => {
+                      globalLineCount++;
+                      const currentGlobalCount = globalLineCount;
+                      const adInterval = isMobile ? 6 : 5;
+                      const showAdAfter = currentGlobalCount % adInterval === 0;
 
                       return (
-                        <React.Fragment key={`${catName}-chunk-${chunkIdx}`}>
-                          {renderBundleCards(chunkItems)}
-
-                          {/* Show Ad after every 4 lines on mobile, and every 2 lines (8 items) on desktop */}
-                          <div className={cn("pt-2", isEvenChunk ? "block" : "block sm:hidden")}>
-                            <AdSlot page="bundle" slotIndex={currentGlobalCount} pageVisitId={pageVisitId} />
+                        <React.Fragment key={`${catName}-line-${lineIdx}`}>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3">
+                            {lineItems.map(renderSingleCard)}
                           </div>
+
+                          {showAdAfter && (
+                            <div className="pt-2">
+                              <AdSlot page="bundle" slotIndex={Math.floor(currentGlobalCount / adInterval) - 1} pageVisitId={pageVisitId} />
+                            </div>
+                          )}
                         </React.Fragment>
                       );
                     })}
